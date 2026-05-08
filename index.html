@@ -2366,8 +2366,8 @@ function buildMilesGrid() {
     // Anchor tooltip to the cell edge for the leftmost / rightmost
     // columns so the wide card never overflows the panel.
     const col = ((i - 1) % 19) + 1;
-    if (col <= 3)        block.classList.add('mile--edge-left');
-    else if (col >= 17)  block.classList.add('mile--edge-right');
+    if (col <= 5)        block.classList.add('mile--edge-left');
+    else if (col >= 15)  block.classList.add('mile--edge-right');
 
     // Wide hover card (logo + sponsor details + message). Same markup
     // as the Leaflet pixel tooltip so the two views stay in sync.
