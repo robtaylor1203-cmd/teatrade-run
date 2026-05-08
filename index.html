@@ -1457,6 +1457,7 @@ button { font-family: inherit; }
 .sponsor-form__hint { text-transform: none; letter-spacing: 0; opacity: 0.85; }
 .sponsor-form input[type="text"],
 .sponsor-form input[type="email"],
+.sponsor-form input[type="number"],
 .sponsor-form textarea {
   font: inherit;
   border: 1.5px solid var(--hairline);
@@ -1489,8 +1490,26 @@ button { font-family: inherit; }
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
+
+/* Compact variant: tighter spacing so the modal fits without scrolling. */
+.sponsor-modal.is-compact .sponsor-glass {
+  padding: 22px 26px 20px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+.sponsor-modal.is-compact .sponsor-glass h3 { margin: 4px 0 6px; font-size: 1.45rem; }
+.sponsor-modal.is-compact .sponsor-glass .lede { font-size: 0.85rem; margin-bottom: 8px; }
+.sponsor-modal.is-compact .sponsor-form { gap: 10px; }
+.sponsor-modal.is-compact .sponsor-form__type { margin-bottom: 0; }
+.sponsor-modal.is-compact .sponsor-form__type legend { margin-bottom: 4px; }
+.sponsor-modal.is-compact .sponsor-form__radio { padding: 10px 14px; }
+.sponsor-modal.is-compact .sponsor-form input,
+.sponsor-modal.is-compact .sponsor-form textarea { padding: 8px 12px; }
+.sponsor-modal.is-compact .donate-amount-input input { padding: 10px 14px 10px 28px; }
+.sponsor-modal.is-compact .donate-chip { padding: 8px 0; font-size: 0.9rem; }
+.sponsor-modal.is-compact .btn-primary { margin-top: 2px; }
 .donate-chip {
   appearance: none;
   -webkit-appearance: none;
@@ -1514,6 +1533,7 @@ button { font-family: inherit; }
 }
 .donate-amount-input {
   position: relative;
+  display: block;
 }
 .donate-amount-input__prefix {
   position: absolute;
@@ -1523,9 +1543,22 @@ button { font-family: inherit; }
   color: var(--muted);
   font-weight: 500;
   pointer-events: none;
+  font-size: 0.95rem;
 }
 .donate-amount-input input {
-  padding-left: 28px !important;
+  width: 100%;
+  padding-left: 30px !important;
+  font-size: 0.95rem;
+}
+/* Hide the native number-input spinners — the chips do that job. */
+.donate-amount-input input::-webkit-outer-spin-button,
+.donate-amount-input input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.donate-amount-input input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 .sponsor-modal.is-premium  .sponsor-form__radio input:checked ~ .sponsor-form__radio-bg {
   border-color: var(--gold-deep);
@@ -2062,7 +2095,7 @@ button { font-family: inherit; }
      "DONATE ANY AMOUNT" MODAL — same form as sponsor a mile
      but with a free-text amount field and no pixel claim.
      ===================================================== -->
-<div class="sponsor-modal" id="donateAnyModal" role="dialog" aria-modal="true" aria-labelledby="donateAnyTitle">
+<div class="sponsor-modal is-featured is-compact" id="donateAnyModal" role="dialog" aria-modal="true" aria-labelledby="donateAnyTitle">
   <div class="sponsor-glass sponsor-glass--wide">
     <button class="sponsor-glass__close" id="donateAnyClose" aria-label="Close">×</button>
     <div class="eyebrow">Every pound counts</div>
