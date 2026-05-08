@@ -1,0 +1,2154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>190 Miles · Wales to London | TeaTrade Run</title>
+<meta name="description" content="Running 190 miles from Peterston Tea Estate in Wales to the Cutty Sark in London — for Alzheimer's Society UK and the UK Tea Trade Benevolent Society." />
+
+<!-- Roboto matches the parent teatrade.co.uk site -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
+
+<!-- Leaflet (OpenStreetMap) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<style>
+/* =============================================================
+   ROOT — two accents (orange + blue), neutral palette,
+   hairline borders, mirrors teatrade.co.uk.
+   ============================================================= */
+:root {
+  --bg:        #f8f9fa;
+  --panel:     #ffffff;
+  --text:      #202124;
+  --muted:     #5f6368;
+  --hairline:  #ececec;
+
+  --accent:        #1a73e8;  /* TeaTrade blue */
+  --accent-orange: #f56600;  /* Run / charity orange */
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.06);
+  --shadow:    0 2px 8px rgba(0,0,0,.08);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,.14);
+
+  --radius:    8px;
+  --radius-lg: 14px;
+  --maxw:      1240px;
+
+  --header-h:  64px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Roboto', system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 400;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden; /* prevent the full-bleed map's 100vw from causing horizontal scroll */
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+img { max-width: 100%; display: block; }
+button { font-family: inherit; }
+
+.container { max-width: var(--maxw); margin: 0 auto; padding: 0 32px; }
+
+/* =============================================================
+   HEADER — fixed top, auto-hides on scroll-down, returns on
+   scroll-up. Sits above the map and Leaflet controls.
+   ============================================================= */
+.site-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--header-h);
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  border-bottom: 1px solid var(--hairline);
+  z-index: 1500; /* > Leaflet controls (~800) so they slide behind */
+  transform: translateY(0);
+  transition: transform .25s cubic-bezier(.2,.8,.2,1);
+}
+.site-header.is-hidden { transform: translateY(-100%); }
+.site-header .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+}
+.brand {
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.brand .dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  background: var(--accent-orange);
+  border-radius: 50%;
+  margin: 0 8px 1px;
+  vertical-align: middle;
+}
+.brand .sub { color: var(--muted); font-weight: 400; }
+.nav-links { display: flex; gap: 28px; }
+.nav-links a {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 0.92rem;
+}
+.nav-links a:hover { color: var(--text); text-decoration: none; }
+@media (max-width: 720px) { .nav-links { display: none; } }
+
+/* =============================================================
+   HERO — flex, minimal, two-tone title (no background image)
+   ============================================================= */
+.hero {
+  position: relative;
+  padding: calc(var(--header-h) + 48px) 0 56px;
+  background: var(--panel);
+  overflow: hidden;
+  border-bottom: 1px solid var(--hairline);
+}
+.hero-flex {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 56px;
+  flex-wrap: wrap;
+}
+.hero-left { flex: 1; min-width: 280px; }
+.hero-title {
+  font-weight: 300;
+  font-size: clamp(2.4rem, 6vw, 4.6rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  max-width: 820px;
+}
+.hero-title .o { color: var(--accent-orange); font-weight: 500; }
+.hero-title .b { color: var(--accent);        font-weight: 500; }
+.hero-title .muted { color: var(--muted); font-weight: 300; }
+
+.hero-lede {
+  margin-top: 24px;
+  max-width: 620px;
+  font-size: 1.08rem;
+  color: var(--muted);
+  font-weight: 300;
+}
+.hero-route { margin-top: 28px; }
+.hero-route .eyebrow {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  margin-bottom: 6px;
+}
+.hero-route .route { font-size: 0.95rem; font-weight: 500; color: var(--text); }
+.hero-route .route strong { color: var(--accent-orange); }
+
+/* =============================================================
+   COUNTDOWN BAR — full-bleed, sits directly above the map.
+   Title hovers above the start point; callout card hovers above
+   the end point. Solid-orange fill, no gradient.
+   ============================================================= */
+.countdown {
+  position: relative;
+  background: var(--panel);
+  border-bottom: 1px solid var(--hairline);
+  padding: 28px 0 32px;
+  width: 100vw;
+  margin-left: calc(50% - 50vw); /* full-bleed inside container if nested */
+}
+.countdown-inner {
+  position: relative;
+  padding: 0 40px;
+  /* Reserve vertical space for the floating title (left) and
+     callout card (right) that sit ABOVE the bar. */
+  padding-top: 96px;
+}
+@media (max-width: 720px) {
+  .countdown-inner { padding: 12px 20px 0; padding-top: 96px; }
+}
+
+.countdown__title-block {
+  position: absolute;
+  top: 0;
+  left: 40px;
+  max-width: 360px;
+}
+@media (max-width: 720px) {
+  .countdown__title-block { left: 20px; right: 20px; max-width: none; }
+}
+.countdown__eyebrow {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  margin-bottom: 6px;
+}
+.countdown__title {
+  font-weight: 300;
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+.countdown__title strong { color: var(--accent-orange); font-weight: 500; }
+
+.countdown-callout {
+  position: absolute;
+  top: 0;
+  right: 40px;
+  width: 240px;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  padding: 12px 16px;
+  box-shadow: var(--shadow);
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  overflow: hidden;
+}
+@media (max-width: 720px) {
+  .countdown-callout { position: static; width: 100%; margin-top: 14px; }
+}
+
+.countdown-callout .days {
+  font-size: 1.8rem;
+  font-weight: 500;
+  color: var(--accent-orange);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.countdown-callout .meta { min-width: 0; }
+.countdown-callout .days-lbl {
+  font-size: 0.66rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 4px;
+}
+.countdown-callout .date {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.25;
+}
+.countdown-callout .date small {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 400;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 1px;
+}
+
+.countdown-bar {
+  position: relative;
+  height: 10px;
+  background: var(--hairline);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.05);
+}
+.countdown-bar__fill {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 0%;
+  background: var(--accent-orange);
+  border-radius: 999px;
+  transition: width 1.4s cubic-bezier(.2,.8,.2,1);
+}
+.countdown-bar__marker {
+  position: absolute;
+  top: 50%;
+  left: 0%;
+  transform: translate(-50%, -50%);
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--accent-orange);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(245,102,0,.45);
+  transition: left 1.4s cubic-bezier(.2,.8,.2,1);
+}
+.countdown-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.countdown-labels strong { color: var(--text); font-weight: 500; }
+
+/* =============================================================
+   MAP SECTION — scrollytelling.
+   Outer is tall; inner shell is sticky and full-screen.
+   Vertical scroll progress -> horizontal pan along route.
+   ============================================================= */
+.map-section {
+  position: relative;
+  /* Tall outer container = scroll runway. 500vh gives a generous
+     "scroll-jacked" distance to traverse Wales -> London. */
+  height: 500vh;
+  background: var(--bg);
+}
+.map-shell {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100vw;
+  /* Break out of any container constraints to be truly full-bleed */
+  margin-left: calc(50% - 50vw);
+  overflow: hidden;
+  background: #e9ecef;
+}
+#map {
+  position: absolute;
+  inset: 0;
+  background: #e9ecef;
+}
+
+/* Tone OSM tiles to a soft neutral grey */
+.leaflet-tile-pane { filter: grayscale(0.6) contrast(0.95) brightness(1.02); }
+.leaflet-control-attribution {
+  font-size: 10px;
+  background: rgba(255,255,255,.85) !important;
+}
+/* Keep Leaflet controls below modals */
+.leaflet-top, .leaflet-bottom { z-index: 800 !important; }
+/* Nudge zoom controls down so they don't crowd the route pill */
+.leaflet-top.leaflet-left { padding-top: 76px; }
+
+/* --- Map overlays ------------------------------------------------ */
+.map-overlay {
+  position: absolute;
+  z-index: 900; /* above Leaflet controls (800), below header (1500) */
+  pointer-events: none;
+}
+.map-overlay > * { pointer-events: auto; }
+
+/* Top-left: route summary pill */
+.route-pill {
+  top: 20px;
+  left: 20px;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: var(--shadow);
+  font-size: 0.88rem;
+}
+.route-pill .dotO,
+.route-pill .dotB {
+  width: 10px; height: 10px; border-radius: 50%;
+  display: inline-block;
+}
+.route-pill .dotO { background: var(--accent-orange); }
+.route-pill .dotB { background: var(--accent); }
+.route-pill .arrow { color: var(--muted); }
+.route-pill strong { font-weight: 500; }
+
+/* Top-right: action stack */
+.action-stack {
+  top: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+}
+@media (max-width: 720px) {
+  .action-stack { right: 12px; top: 12px; }
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  padding: 12px 22px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease, color .15s ease;
+  white-space: nowrap;
+}
+.btn:hover { transform: translateY(-1px); text-decoration: none; }
+.btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+.btn-primary {
+  background: var(--accent-orange);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(245,102,0,.35);
+  animation: pulse 2.4s infinite;
+}
+.btn-primary:hover { background: #d95800; box-shadow: 0 8px 24px rgba(245,102,0,.45); }
+.btn-ghost {
+  background: var(--panel);
+  color: var(--text);
+  border-color: var(--hairline);
+  box-shadow: var(--shadow-sm);
+}
+.btn-ghost:hover { border-color: var(--text); }
+
+@keyframes pulse {
+  0%,100% { box-shadow: 0 4px 14px rgba(245,102,0,.35); }
+  50%     { box-shadow: 0 4px 22px rgba(245,102,0,.65); }
+}
+
+/* Bottom-center: route scrubber — interactive, drag to pan along route */
+.scrubber {
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(720px, calc(100% - 48px));
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 14px 20px 12px;
+  user-select: none;
+}
+.scrubber__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 22px; /* clearance for the 32px draggable cup */
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.scrubber__row strong { color: var(--text); font-weight: 500; }
+.scrubber__track {
+  position: relative;
+  height: 7px;
+  background: var(--hairline);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.05);
+  /* content-box so the 7px is the visible bar; padding extends the
+     hit area without crushing the bar height. */
+  box-sizing: content-box;
+  padding: 14px 0;
+  margin: -14px 0;
+  background-clip: content-box;
+  touch-action: none;
+}
+.scrubber__fill {
+  position: absolute;
+  top: 14px; bottom: 14px; left: 0;
+  width: 0%;
+  background: var(--accent-orange);
+  border-radius: 999px;
+  pointer-events: none;
+}
+.scrubber__cup {
+  position: absolute;
+  top: 50%;
+  left: 0%;
+  transform: translate(-50%, -50%);
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--accent-orange);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.scrubber__cup:hover { box-shadow: 0 2px 14px rgba(245,102,0,.55); }
+.scrubber__cup:active,
+.scrubber.is-dragging .scrubber__cup {
+  cursor: grabbing;
+  transform: translate(-50%, -50%) scale(1.15);
+}
+.scrubber__cup svg { width: 16px; height: 16px; }
+.scrubber__labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 22px; /* clearance for the 32px draggable cup */
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.scrubber__hint {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+  .scrubber { bottom: 16px; }
+}
+
+/* --- Slide-up "Sponsor a Mile" panel — sits inside the map shell.
+   Glassy backdrop, no scrollbars (grid auto-sizes to fit). ---- */
+.mile-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(255,255,255,0.78);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  display: flex;
+  flex-direction: column;
+  transform: translateY(101%);
+  transition: transform .35s cubic-bezier(.2,.8,.2,1);
+  padding: 28px 40px 32px;
+  overflow: hidden;
+}
+.mile-panel.is-open { transform: translateY(0); }
+.mile-panel__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 32px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.mile-panel__intro { flex: 1; min-width: 280px; }
+.mile-panel__head h2 {
+  font-weight: 300;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+.mile-panel__head p {
+  color: var(--muted);
+  font-weight: 300;
+  font-size: 0.95rem;
+  max-width: 560px;
+}
+.mile-panel__close {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.mile-panel__close:hover { color: var(--text); border-color: var(--text); }
+
+.mile-stats {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.mile-stat .num {
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: var(--text);
+}
+.mile-stat .num.orange { color: var(--accent-orange); }
+.mile-stat .lbl {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.mile-grid-wrap {
+  flex: 1;
+  overflow: hidden;          /* no scrollbars — grid sized to fit */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  padding: 16px;
+  background: var(--bg);
+  min-height: 0;
+  min-width: 0;
+}
+.miles-grid {
+  display: grid;
+  /* 19 × 10 = 190 cells; aspect-ratio + 1fr cols/rows let cells
+     fill the available space with square cells. */
+  grid-template-columns: repeat(19, 1fr);
+  grid-template-rows: repeat(10, 1fr);
+  gap: 6px;
+  aspect-ratio: 19 / 10;
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+}
+.mile {
+  background: rgba(0,0,0,.04);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  color: var(--muted);
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  position: relative;
+  border: 1px solid transparent;
+}
+.mile:hover {
+  transform: scale(1.4);
+  z-index: 10;
+  box-shadow: var(--shadow-lg);
+  background: var(--panel);
+  border-color: var(--accent-orange);
+  color: var(--text);
+}
+.mile--claimed { background: var(--accent-orange); color: #fff; font-weight: 500; }
+.mile--claimed.tier-premium  { background: var(--accent); }
+.mile--claimed.tier-corporate{ background: var(--text); }
+.mile__tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.625);
+  transform-origin: bottom center;
+  width: 200px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 0.8rem;
+  text-align: left;
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s ease;
+  z-index: 20;
+}
+.mile:hover .mile__tooltip { opacity: 1; }
+.mile__tooltip strong { display: block; color: var(--accent); margin-bottom: 2px; font-weight: 500; }
+.mile__tooltip .amt   { color: var(--accent-orange); font-weight: 500; }
+.mile__tooltip .msg   { color: var(--muted); margin-top: 4px; font-style: italic; font-weight: 300; }
+
+.mile-panel__legend {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.mile-panel__legend .swatch {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+/* --- Leaflet markers / pixels / popups --------------------------- */
+
+/* Waypoint pin (city / start / finish) */
+.waypoint-marker {
+  background: var(--accent);
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,.3);
+  transition: transform .15s ease;
+}
+.waypoint-marker.start  { background: var(--accent-orange); }
+.waypoint-marker.finish { background: var(--text); }
+.waypoint-marker:hover  { transform: scale(1.4); }
+
+/* The animated runner marker (SVG teacup in a coloured pill) */
+.runner-marker {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--accent-orange);
+  border: 3px solid #fff;
+  box-shadow: 0 3px 8px rgba(0,0,0,.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  animation: bob .7s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+.runner-marker svg { width: 18px; height: 18px; }
+@keyframes bob { from { transform: translateY(0); } to { transform: translateY(-4px); } }
+
+/* "Pixel" sponsor blocks along the route — dominant interactive layer.
+   Each represents a sponsorable chunk of the run. Rendered as circles. */
+.pixel {
+  width: 12px;
+  height: 12px;
+  background: rgba(245,102,0,0.5); /* unsponsored = soft orange */
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: transform .12s ease, background .12s ease, box-shadow .12s ease;
+}
+.pixel:hover {
+  transform: scale(2);
+  background: var(--accent-orange);
+  box-shadow: 0 0 0 2px #fff, 0 4px 10px rgba(0,0,0,.25);
+  z-index: 999;
+}
+.pixel--claimed { background: var(--accent-orange); }
+.pixel--claimed.tier-premium  { background: var(--accent); }
+.pixel--claimed.tier-corporate{ background: var(--text); }
+
+/* Popup styling */
+.leaflet-popup-content-wrapper {
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--hairline);
+}
+.leaflet-popup-content {
+  font-family: 'Roboto', sans-serif;
+  margin: 14px 16px;
+  font-size: 0.85rem;
+}
+.leaflet-popup-content h4 {
+  font-weight: 500;
+  color: var(--accent);
+  margin-bottom: 4px;
+  font-size: 0.95rem;
+}
+.leaflet-popup-content .miles {
+  color: var(--accent-orange);
+  font-weight: 500;
+  font-size: 0.78rem;
+  margin-bottom: 6px;
+}
+.leaflet-popup-content p {
+  color: var(--muted);
+  font-weight: 300;
+  margin-bottom: 6px;
+}
+.leaflet-popup-content .pop-amt { color: var(--accent-orange); font-weight: 500; }
+.leaflet-popup-content .pop-msg { color: var(--muted); font-style: italic; font-weight: 300; }
+.leaflet-popup-content .pop-cta {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 6px 12px;
+  background: var(--accent-orange);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+/* Tooltip styling (used for pixel hover) */
+.leaflet-tooltip.pixel-tip {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 10px 12px;
+  font-family: 'Roboto', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+.leaflet-tooltip.pixel-tip strong { color: var(--accent); font-weight: 500; }
+.leaflet-tooltip.pixel-tip .amt   { color: var(--accent-orange); font-weight: 500; }
+.leaflet-tooltip.pixel-tip .msg   { color: var(--muted); font-style: italic; font-weight: 300; display: block; margin-top: 2px; }
+.leaflet-tooltip.pixel-tip::before { display: none; } /* hide arrow for cleanness */
+
+/* =============================================================
+   TOTAL RAISED — standalone card by default, with an orange
+   close button. When closed, collapses to a circular £ orb that
+   re-expands the card on click.
+   ============================================================= */
+.raised-orb {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 1050; /* below mile-panel (1100) so the panel covers it */
+}
+
+/* The collapsed £ circle (hidden by default — box is shown first) */
+.raised-orb__circle {
+  position: relative;
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--accent-orange);
+  color: #fff;
+  border: 3px solid #fff;
+  box-shadow: 0 6px 20px rgba(245,102,0,.35);
+  cursor: pointer;
+  font-family: inherit;
+  display: none;       /* hidden when the box is open */
+  align-items: center;
+  justify-content: center;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.raised-orb__circle:hover { transform: scale(1.05); box-shadow: 0 8px 26px rgba(245,102,0,.5); }
+.raised-orb__sym {
+  font-size: 1.6rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.raised-orb__ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 3px solid var(--accent-orange);
+  opacity: .35;
+  animation: orb-pulse 2.4s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes orb-pulse {
+  0%   { transform: scale(1);    opacity: .45; }
+  100% { transform: scale(1.55); opacity: 0; }
+}
+
+/* The expanded card (visible by default) */
+.raised-orb__panel {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 18px 22px 16px;
+  width: 280px;
+  font-size: 0.9rem;
+  display: block;
+  transform-origin: bottom left;
+}
+
+/* When the user closes the box: hide the panel, show the circle */
+.raised-orb.is-collapsed .raised-orb__panel { display: none; }
+.raised-orb.is-collapsed .raised-orb__circle { display: flex; }
+
+.raised-orb__close {
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--accent-orange);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(245,102,0,.35);
+  transition: transform .15s ease, background .15s ease;
+}
+.raised-orb__close:hover { background: #d95800; transform: scale(1.08); }
+
+.raised-orb__panel .lbl {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.raised-orb__panel .amt {
+  font-size: 1.6rem;
+  font-weight: 500;
+  color: var(--accent-orange);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.raised-orb__panel .goal { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+.raised-orb__panel .bar {
+  width: 100%;
+  height: 6px;
+  background: var(--hairline);
+  border-radius: 999px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+.raised-orb__panel .bar__fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent-orange);
+  border-radius: 999px;
+  transition: width 1.4s ease-out;
+}
+.raised-orb__panel .donate-link {
+  display: block;
+  margin-top: 10px;
+  font-size: 0.82rem;
+  color: var(--accent-orange);
+  font-weight: 500;
+}
+@media (max-width: 720px) {
+  .raised-orb { bottom: 12px; left: 12px; }
+  .raised-orb__panel { width: calc(100vw - 32px); }
+}
+
+/* =============================================================
+   HERO CHARITY MINI-CARDS (right column of hero, stacked)
+   ============================================================= */
+.hero-charities {
+  width: 320px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.hero-charities__label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  margin-bottom: 4px;
+}
+.charity-mini {
+  position: relative;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text);
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.charity-mini:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+  border-color: transparent;
+}
+.charity-mini__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.charity-mini__dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.charity-mini--alz    .charity-mini__dot { background: var(--accent-orange); }
+.charity-mini--ukttbs .charity-mini__dot { background: var(--accent); }
+.charity-mini__name {
+  font-weight: 500;
+  font-size: 0.95rem;
+  flex: 1;
+  letter-spacing: -0.005em;
+}
+.charity-mini__arrow {
+  width: 14px; height: 14px;
+  color: var(--muted);
+  transition: transform .15s ease, color .15s ease;
+}
+.charity-mini:hover .charity-mini__arrow { transform: translate(2px, -2px); }
+.charity-mini--alz:hover    .charity-mini__arrow { color: var(--accent-orange); }
+.charity-mini--ukttbs:hover .charity-mini__arrow { color: var(--accent); }
+.charity-mini__tag {
+  margin-top: 6px;
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 300;
+}
+@media (max-width: 880px) {
+  .hero-charities { width: 100%; }
+}
+
+/* =============================================================
+   GLASSMORPHISM SPONSOR MODAL — opens on pixel click
+   The .charity-modal / .charity-glass alias the same look.
+   ============================================================= */
+.sponsor-modal,
+.charity-modal {
+  position: fixed; inset: 0;
+  background: rgba(20, 22, 26, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+}
+.charity-modal.charity-modal--alz,
+.charity-modal.charity-modal--ukttbs { background: rgba(20, 22, 26, 0.72); }
+.sponsor-modal.is-open,
+.charity-modal.is-open { display: flex; }
+.sponsor-glass,
+.charity-glass {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  padding: 36px 36px 32px;
+  border-radius: 22px;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+  color: var(--text);
+  transform: scale(0.96);
+  opacity: 0;
+  transition: transform .25s cubic-bezier(.2,.8,.2,1), opacity .25s ease;
+}
+.sponsor-modal.is-open .sponsor-glass,
+.charity-modal.is-open .charity-glass { transform: scale(1); opacity: 1; }
+.sponsor-glass__close {
+  position: absolute;
+  top: 14px; right: 18px;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.1rem; line-height: 1;
+  color: var(--muted);
+}
+.sponsor-glass__close:hover { color: var(--text); border-color: var(--text); }
+.sponsor-glass .eyebrow,
+.charity-glass .eyebrow {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--accent-orange);
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.charity-modal--ukttbs .charity-glass .eyebrow { color: var(--accent); }
+.sponsor-glass h3,
+.charity-glass h3 {
+  font-weight: 300;
+  font-size: 1.8rem;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+.sponsor-glass h3 strong { font-weight: 500; color: var(--accent-orange); }
+.sponsor-glass .lede,
+.charity-glass .lede {
+  color: var(--muted);
+  font-weight: 300;
+  font-size: 0.95rem;
+  margin-bottom: 22px;
+}
+.sponsor-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.sponsor-opt {
+  position: relative;
+  text-align: left;
+  background: var(--bg);
+  border: 1.5px solid var(--hairline);
+  border-radius: 14px;
+  padding: 16px 16px 14px;
+  cursor: pointer;
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease, background .15s ease;
+  font-family: inherit;
+  color: var(--text);
+}
+.sponsor-opt:hover {
+  transform: translateY(-2px);
+  background: var(--panel);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.06);
+  border-color: var(--text);
+}
+.sponsor-opt.is-selected {
+  border-color: var(--accent-orange);
+  background: var(--panel);
+  box-shadow: 0 4px 16px rgba(245,102,0,.18);
+}
+.sponsor-opt .price {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--accent-orange);
+  letter-spacing: -0.01em;
+}
+.sponsor-opt .scope {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 2px;
+}
+.sponsor-opt .desc {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+.sponsor-glass .btn-primary,
+.charity-glass .btn-primary {
+  width: 100%;
+  justify-content: center;
+}
+.charity-modal--ukttbs .charity-glass .btn-primary {
+  background: var(--accent);
+  box-shadow: 0 4px 14px rgba(26,115,232,.35);
+}
+.charity-modal--ukttbs .charity-glass .btn-primary:hover { background: #1456b8; }
+.sponsor-glass .small,
+.charity-glass .small {
+  margin-top: 12px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-align: center;
+  letter-spacing: 0.06em;
+}
+
+/* =============================================================
+   CAFFEINE BOOST modal
+   ============================================================= */
+.caffeine-modal {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.45);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+.caffeine-modal.is-open { display: flex; }
+.caffeine-content {
+  background: var(--panel);
+  border-radius: var(--radius-lg);
+  padding: 40px;
+  text-align: center;
+  position: relative;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: var(--shadow-lg);
+}
+.caffeine-content h3 { color: var(--accent-orange); font-weight: 500; margin-bottom: 8px; }
+.caffeine-content p { color: var(--muted); font-weight: 300; margin-bottom: 16px; }
+.caffeine-close {
+  position: absolute; top: 12px; right: 16px;
+  background: none; border: none;
+  font-size: 1.4rem; cursor: pointer; color: var(--muted);
+}
+.teacup { position: relative; width: 110px; height: 100px; margin: 20px auto; }
+.teacup__body {
+  position: absolute;
+  bottom: 0; left: 8px;
+  width: 94px; height: 74px;
+  background: #fff;
+  border: 3px solid var(--accent);
+  border-radius: 0 0 50px 50px / 0 0 60px 60px;
+  overflow: hidden;
+}
+.teacup__handle {
+  position: absolute;
+  bottom: 16px; right: -4px;
+  width: 24px; height: 34px;
+  border: 3px solid var(--accent);
+  border-left: none;
+  border-radius: 0 18px 18px 0;
+}
+.teacup__tea {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 0%;
+  background: linear-gradient(180deg, #b87333 0%, #8b4513 100%);
+  transition: height 1.2s ease-out;
+}
+.is-boosting .teacup__tea { height: 110%; }
+.teacup__steam {
+  position: absolute; top: -28px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 20px; opacity: 0;
+}
+.is-boosting .teacup__steam { animation: steam-rise 1.5s ease-out forwards; }
+@keyframes steam-rise {
+  0% { opacity: 0; transform: translate(-50%, 0); }
+  40%{ opacity: 1; }
+  100%{ opacity: 0; transform: translate(-50%, -36px); }
+}
+.confetti-piece {
+  position: absolute;
+  width: 7px; height: 11px;
+  top: 50%; left: 50%;
+  opacity: 0; pointer-events: none;
+  border-radius: 2px;
+}
+.is-boosting .confetti-piece { animation: confetti-burst 1.6s ease-out forwards; }
+@keyframes confetti-burst {
+  0%   { opacity: 1; transform: translate(0,0) rotate(0); }
+  100% { opacity: 0; transform: translate(var(--cx,100px), var(--cy,-120px)) rotate(720deg); }
+}
+
+</style>
+</head>
+<body>
+
+<!-- Reusable inline SVG icon set (referenced via <use href="#i-name">) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- Teacup with handle -->
+    <symbol id="i-tea" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+        d="M4 10h12v5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-5z M16 11h2a2.5 2.5 0 0 1 0 5h-2 M7 4c0 1 1 1 1 2s-1 1-1 2 M11 4c0 1 1 1 1 2s-1 1-1 2"/>
+    </symbol>
+    <!-- Coffee cup (caffeine boost) -->
+    <symbol id="i-coffee" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+        d="M3 9h13v6a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9z M16 10h2a3 3 0 0 1 0 6h-2 M3 21h14 M7 3c0 1.2 1.2 1.2 1.2 2.4S7 6.6 7 7.8 M11 3c0 1.2 1.2 1.2 1.2 2.4S11 6.6 11 7.8"/>
+    </symbol>
+    <!-- Fuel droplet -->
+    <symbol id="i-fuel" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+        d="M12 3s6 6.5 6 11a6 6 0 1 1-12 0c0-4.5 6-11 6-11z"/>
+    </symbol>
+    <!-- Runner figure -->
+    <symbol id="i-runner" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+        d="M14.5 4.5a1.8 1.8 0 1 1-3.6 0 1.8 1.8 0 0 1 3.6 0z M5 21l3.5-5 1.5-3-2.5-2 2-4 4 1 2 3 3 1 M9 13l-2 4 M14 14l2 3 2 1"/>
+    </symbol>
+    <!-- Arrow / external link -->
+    <symbol id="i-arrow" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+        d="M7 17 17 7 M9 7h8v8"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- =====================================================
+     HEADER — fixed, auto-hides on scroll-down
+     ===================================================== -->
+<header class="site-header" id="siteHeader">
+  <div class="container">
+    <a href="/" class="brand">
+      TeaTrade<span class="dot"></span><span class="sub">Run</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#map-section">The Route</a>
+      <a href="#" id="navSponsorLink">Sponsor a Mile</a>
+      <a href="https://teatrade.co.uk" target="_blank" rel="noopener">teatrade.co.uk <svg style="width:12px;height:12px;vertical-align:-1px;"><use href="#i-arrow"/></svg></a>
+    </nav>
+  </div>
+</header>
+
+<!-- =====================================================
+     HERO — flex, minimal, two-tone
+     ===================================================== -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-flex">
+      <div class="hero-left">
+        <h1 class="hero-title">
+          <span class="o">190 miles</span><span class="muted"> from a Welsh tea estate to the </span><span class="b">Cutty Sark</span><span class="muted">.</span>
+        </h1>
+        <p class="hero-lede">
+          One tea taster. Two charities. A long, slow line drawn across the
+          map of Britain — raising funds for the people and families behind
+          the cuppa.
+        </p>
+        <div class="hero-route">
+          <div class="eyebrow">The Run</div>
+          <div class="route">Peterston <svg style="width:12px;height:12px;color:var(--muted);vertical-align:-1px;"><use href="#i-arrow"/></svg> Greenwich · <strong>190 mi</strong></div>
+        </div>
+      </div>
+
+      <aside class="hero-charities" aria-label="Charities supported">
+        <div class="hero-charities__label">Supporting</div>
+        <button class="charity-mini charity-mini--alz" data-charity="alz" type="button">
+          <div class="charity-mini__row">
+            <span class="charity-mini__dot"></span>
+            <span class="charity-mini__name">Alzheimer's Society UK</span>
+            <svg class="charity-mini__arrow"><use href="#i-arrow"/></svg>
+          </div>
+          <p class="charity-mini__tag">The UK's leading dementia charity</p>
+        </button>
+        <button class="charity-mini charity-mini--ukttbs" data-charity="ukttbs" type="button">
+          <div class="charity-mini__row">
+            <span class="charity-mini__dot"></span>
+            <span class="charity-mini__name">UK Tea Trade Benevolent Society</span>
+            <svg class="charity-mini__arrow"><use href="#i-arrow"/></svg>
+          </div>
+          <p class="charity-mini__tag">The safety net of our industry</p>
+        </button>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================
+     COUNTDOWN — full-bleed bar above the map
+     ===================================================== -->
+<section class="countdown" aria-label="Countdown to run day">
+  <div class="countdown-inner">
+    <div class="countdown__title-block">
+      <div class="countdown__eyebrow">Countdown to the start line</div>
+      <h2 class="countdown__title">Training, planning, &amp; <strong>running</strong>.</h2>
+    </div>
+
+    <aside class="countdown-callout" aria-live="polite">
+      <div class="days" id="countdownDays">—</div>
+      <div class="meta">
+        <div class="days-lbl" id="countdownDaysLbl">days remaining</div>
+        <div class="date"><small>Run day</small>Fri, 2 Apr 2027</div>
+      </div>
+    </aside>
+
+    <div class="countdown-bar" id="countdownBar" role="progressbar"
+         aria-label="Time elapsed since training started"
+         aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="countdown-bar__fill" id="countdownFill"></div>
+      <div class="countdown-bar__marker" id="countdownMarker" aria-hidden="true"></div>
+    </div>
+    <div class="countdown-labels">
+      <span><strong>01 Jan 2026</strong> · Training begins</span>
+      <span><strong>02 Apr 2027</strong> · Run day</span>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================
+     MAP — full-bleed, scrollytelling.
+     The tall .map-section creates the scroll runway; the
+     .map-shell sticks under the header for its duration.
+     ===================================================== -->
+<section class="map-section" id="map-section">
+  <div class="map-shell" id="mapShell">
+    <div id="map" aria-label="Interactive map of the 190-mile route"></div>
+
+    <!-- Top-left: route summary -->
+    <div class="map-overlay route-pill">
+      <span><span class="dotO"></span> <strong>Peterston</strong></span>
+      <span class="arrow">———</span>
+      <span><strong>Cutty Sark</strong> <span class="dotB"></span></span>
+      <span class="arrow">·</span>
+      <span><strong>190 mi</strong></span>
+    </div>
+
+    <!-- Top-right: primary actions -->
+    <div class="map-overlay action-stack">
+      <button class="btn btn-primary" id="claimOpenBtn">Sponsor a Mile</button>
+      <button class="btn btn-ghost" id="caffeineBtn"><svg><use href="#i-coffee"/></svg> Caffeine Boost</button>
+    </div>
+
+    <!-- Bottom-center: route scrubber driven by page scroll -->
+    <div class="map-overlay scrubber" id="scrubber">
+      <div class="scrubber__row">
+        <span>Scroll to follow the route</span>
+        <strong><span id="scrubberMile">0</span> / 190 mi</strong>
+      </div>
+      <div class="scrubber__track" id="scrubberTrack">
+        <div class="scrubber__fill" id="scrubberFill"></div>
+        <div class="scrubber__cup" id="scrubberCup" role="slider" tabindex="0"
+             aria-label="Route progress" aria-valuemin="0" aria-valuemax="190" aria-valuenow="0">
+          <svg><use href="#i-tea"/></svg>
+        </div>
+      </div>
+      <div class="scrubber__labels">
+        <span>Peterston, Wales</span>
+        <span>Cutty Sark, London</span>
+      </div>
+      <div class="scrubber__hint">Drag the slider, or scroll — hover any pixel to sponsor it</div>
+    </div>
+
+    <!-- Slide-up "Sponsor a Mile" panel -->
+    <div class="mile-panel" id="milePanel" aria-hidden="true">
+      <div class="mile-panel__head">
+        <div class="mile-panel__intro">
+          <h2>Sponsor a <span style="color:var(--accent-orange);">mile</span>.</h2>
+          <p>190 miles. 190 sponsorship slots. Pick a mile, pop on your name or company logo, and cheer the runner through that exact stretch of road.</p>
+        </div>
+        <div class="mile-stats">
+          <div class="mile-stat"><div class="num orange" id="statClaimed">0</div><div class="lbl">Claimed</div></div>
+          <div class="mile-stat"><div class="num" id="statRemaining">190</div><div class="lbl">Remaining</div></div>
+          <div class="mile-stat"><div class="num">£10</div><div class="lbl">Per pixel</div></div>
+          <div class="mile-stat"><div class="num">£50</div><div class="lbl">Whole mile</div></div>
+        </div>
+        <button class="mile-panel__close" id="milePanelClose" aria-label="Close">×</button>
+      </div>
+
+      <div class="mile-grid-wrap">
+        <div class="miles-grid" id="milesGrid" role="list" aria-label="190 sponsorable miles"></div>
+      </div>
+
+      <div class="mile-panel__legend">
+        <span><span class="swatch" style="background: rgba(0,0,0,.04); border:1px solid var(--hairline);"></span>Available</span>
+        <span><span class="swatch" style="background: var(--accent-orange);"></span>Sponsored</span>
+        <span><span class="swatch" style="background: var(--text);"></span>Corporate</span>
+        <span><span class="swatch" style="background: var(--accent);"></span>Premium</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================
+     STICKY "TOTAL RAISED" CIRCLE — collapsed-by-default
+     ===================================================== -->
+<aside class="raised-orb" id="raisedOrb" role="region" aria-label="Total raised">
+  <button class="raised-orb__circle" id="raisedOrbToggle" aria-expanded="true" aria-controls="raisedOrbPanel">
+    <span class="raised-orb__sym">£</span>
+    <span class="raised-orb__ring" aria-hidden="true"></span>
+  </button>
+  <div class="raised-orb__panel" id="raisedOrbPanel">
+    <button class="raised-orb__close" id="raisedOrbClose" aria-label="Collapse">×</button>
+    <div class="lbl">Total raised</div>
+    <div class="amt" id="raisedAmount">£0</div>
+    <div class="goal">of £19,000 goal · <span id="raisedPercent">0%</span></div>
+    <div class="bar"><div class="bar__fill" id="raisedBar"></div></div>
+    <a href="#" class="donate-link" id="claimOpenLink">Sponsor a mile <svg style="width:11px;height:11px;vertical-align:-1px;"><use href="#i-arrow"/></svg></a>
+  </div>
+</aside>
+
+<!-- =====================================================
+     CHARITY DETAIL — glassmorphism modal
+     ===================================================== -->
+<div class="charity-modal" id="charityModal" role="dialog" aria-modal="true" aria-labelledby="charityTitle">
+  <div class="charity-glass">
+    <button class="sponsor-glass__close" id="charityClose" aria-label="Close">×</button>
+    <div class="eyebrow" id="charityEyebrow">Charity</div>
+    <h3 id="charityTitle">Title</h3>
+    <p class="lede" id="charityBody"></p>
+    <a class="btn btn-primary" id="charityVisit" href="#" target="_blank" rel="noopener">
+      Visit website <svg><use href="#i-arrow"/></svg>
+    </a>
+    <div class="small">Donations split equally between both charities</div>
+  </div>
+</div>
+
+<!-- =====================================================
+     SPONSOR PIXEL / MILE — glassmorphism modal
+     ===================================================== -->
+<div class="sponsor-modal" id="sponsorModal" role="dialog" aria-modal="true" aria-labelledby="sponsorTitle">
+  <div class="sponsor-glass">
+    <button class="sponsor-glass__close" id="sponsorClose" aria-label="Close">×</button>
+    <div class="eyebrow" id="sponsorEyebrow">Pixel 1</div>
+    <h3 id="sponsorTitle">Sponsor a <strong>pixel</strong>.</h3>
+    <p class="lede">Pop your name, message, or company logo onto the route. Every pound directly funds the run and the two charities.</p>
+
+    <div class="sponsor-options" role="radiogroup" aria-label="Sponsorship amount">
+      <button class="sponsor-opt is-selected" data-amount="10" data-scope="pixel" role="radio" aria-checked="true">
+        <div class="price">£10</div>
+        <div class="scope">A pixel</div>
+        <div class="desc">A small slice of the road. Perfect for a personal shout-out.</div>
+      </button>
+      <button class="sponsor-opt" data-amount="50" data-scope="mile" role="radio" aria-checked="false">
+        <div class="price">£50</div>
+        <div class="scope">A whole mile</div>
+        <div class="desc">Sponsor the runner for a full mile. Logo, name and message displayed.</div>
+      </button>
+    </div>
+
+    <button class="btn btn-primary" id="sponsorContinueBtn">
+      Continue · <span id="sponsorContinueAmt">£10</span>
+    </button>
+    <div class="small">Secure checkout via JustGiving · 100% to charity</div>
+  </div>
+</div>
+
+<!-- =====================================================
+     CAFFEINE BOOST MODAL
+     ===================================================== -->
+<div class="caffeine-modal" id="caffeineModal" role="dialog" aria-modal="true">
+  <div class="caffeine-content" id="caffeineContent">
+    <button class="caffeine-close" id="caffeineClose" aria-label="Close">×</button>
+    <h3>Caffeine boost.</h3>
+    <p>You just gave the runner a much-needed energy hit. Want to make it real?</p>
+    <div class="teacup">
+      <div class="teacup__steam"><svg style="width:18px;height:18px;color:var(--muted);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M7 9c0-2 2-2 2-4M11 9c0-2 2-2 2-4M15 9c0-2 2-2 2-4"/></svg></div>
+      <div class="teacup__body"><div class="teacup__tea"></div></div>
+      <div class="teacup__handle"></div>
+    </div>
+    <button class="btn btn-primary" id="caffeineDonateBtn"><svg><use href="#i-tea"/></svg> Donate £5 to fuel a mile</button>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   CONFIG — single source of truth.
+   ================================================================ */
+const CONFIG = {
+  raisedTotal: 4250,
+  raisedGoal:  19000,
+
+  /* Number of "pixels" the route is broken into for sponsorship.
+     Each pixel = one £1 donation by default (a true per-pixel cost).
+     Tweak granularity here. 190 keeps it aligned to mileage. */
+  pixelCount: 190,
+  pixelPrice: 10,  // £ per pixel sponsorship
+  milePrice:  50,  // £ to fully "run" a whole mile
+
+  /* When scrolly-mapping, how zoomed-in to be while panning. */
+  mapZoom: 10,
+
+  /* Approximate route via real towns, Peterston-super-Ely (Wales)
+     to the Cutty Sark in Greenwich. Order = direction of travel. */
+  route: [
+    { name: "Peterston Tea Estate", lat: 51.4906, lng: -3.3500, mile: 0,   role: "start",
+      fact: "One of just a handful of working tea estates in the UK — and the start line. First brew of the day at 5:30am." },
+    { name: "Cardiff",              lat: 51.4816, lng: -3.1791, mile: 14,
+      fact: "First proper city stop. Welsh cake fuel station courtesy of local supporters." },
+    { name: "Newport",              lat: 51.5842, lng: -2.9977, mile: 26,
+      fact: "Last big Welsh stop before crossing the Severn." },
+    { name: "Bristol",              lat: 51.4545, lng: -2.5879, mile: 50,
+      fact: "Crossing the Severn — leaving Wales behind." },
+    { name: "Bath",                 lat: 51.3811, lng: -2.3590, mile: 64,
+      fact: "Roman baths, rolling hills and very tired calves." },
+    { name: "Swindon",              lat: 51.5557, lng: -1.7797, mile: 96,
+      fact: "Officially halfway. The legs start filing complaints around here." },
+    { name: "Reading",              lat: 51.4543, lng: -0.9781, mile: 138,
+      fact: "Last big town before London. Strong tea, stronger willpower required." },
+    { name: "West London",          lat: 51.4934, lng: -0.2300, mile: 170,
+      fact: "Hitting the Thames Path. The skyline appears — and so do legs of jelly." },
+    { name: "Cutty Sark, Greenwich",lat: 51.4825, lng: -0.0099, mile: 190, role: "finish",
+      fact: "Once the fastest tea clipper in the world. A fitting finish line." },
+  ],
+
+  /* Sponsored pixels. Index here = pixel number (1..pixelCount).
+     Once a real donation flow is wired in, build this array from
+     your backend / JustGiving / Stripe. */
+  sponsoredPixels: [
+    { pixel: 1,   sponsor: "Peterston Tea Estate", amount: 500,  tier: "premium",   message: "Where it all begins. Run strong!" },
+    { pixel: 14,  sponsor: "Welsh Tea Co.",        amount: 50,   tier: "standard",  message: "Cymru am byth! Keep going." },
+    { pixel: 27,  sponsor: "Severn Crossings Ltd", amount: 25,   tier: "standard",  message: "Goodbye Wales, hello England." },
+    { pixel: 50,  sponsor: "Bristol Brew Bar",     amount: 50,   tier: "standard",  message: "Halfway to halfway — easy!" },
+    { pixel: 64,  sponsor: "Bath Tea Rooms",       amount: 30,   tier: "standard",  message: "Roman roads still hurt." },
+    { pixel: 75,  sponsor: "Acme Tea Importers",   amount: 250,  tier: "corporate", message: "Proud sponsors of one tired runner." },
+    { pixel: 96,  sponsor: "The Tasting Room",     amount: 100,  tier: "standard",  message: "Halfway hero!" },
+    { pixel: 120, sponsor: "Berkshire Brews",      amount: 40,   tier: "standard",  message: "One foot, then the other." },
+    { pixel: 138, sponsor: "Reading Roasters",     amount: 50,   tier: "standard",  message: "Nearly there — kettle is on." },
+    { pixel: 155, sponsor: "Henley Hounds RC",     amount: 35,   tier: "standard",  message: "From the river crew." },
+    { pixel: 170, sponsor: "Thames Tea Co.",       amount: 250,  tier: "corporate", message: "Just follow the river home." },
+    { pixel: 185, sponsor: "Greenwich Gazette",    amount: 75,   tier: "standard",  message: "Final push! See you at the Sark." },
+    { pixel: 190, sponsor: "Cutty Sark Trust",     amount: 500,  tier: "premium",   message: "Welcome home, sailor!" },
+  ],
+};
+
+/* ================================================================
+   1. Total Raised — animated count-up + bar
+   ================================================================ */
+function animateRaised() {
+  const el    = document.getElementById('raisedAmount');
+  const pctEl = document.getElementById('raisedPercent');
+  const bar   = document.getElementById('raisedBar');
+  const target = CONFIG.raisedTotal;
+  const goal   = CONFIG.raisedGoal;
+  const start  = performance.now();
+  const dur    = 1600;
+  function frame(now) {
+    const t = Math.min(1, (now - start) / dur);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = '£' + Math.round(target * eased).toLocaleString('en-GB');
+    if (t < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  const pct = Math.min(100, Math.round((target / goal) * 100));
+  pctEl.textContent = pct + '%';
+  requestAnimationFrame(() => bar.style.width = pct + '%');
+}
+
+/* ================================================================
+   2. LEAFLET MAP — neutral grey, polyline, waypoints,
+   per-pixel sponsor blocks, runner marker.
+   ================================================================ */
+let leafletMap     = null;
+let runnerMarker   = null;
+let routeLatLngs   = [];
+let cumulativeDist = []; // cumulative distance (m) at each waypoint
+let totalDist      = 0;
+
+function setupMap() {
+  routeLatLngs = CONFIG.route.map(w => [w.lat, w.lng]);
+
+  // Pre-compute cumulative distances for fast point-along-route lookup
+  cumulativeDist = [0];
+  for (let i = 1; i < routeLatLngs.length; i++) {
+    const a = L.latLng(routeLatLngs[i-1]);
+    const b = L.latLng(routeLatLngs[i]);
+    totalDist += a.distanceTo(b);
+    cumulativeDist.push(totalDist);
+  }
+
+  leafletMap = L.map('map', {
+    zoomControl: true,
+    scrollWheelZoom: false, // we hijack vertical scroll for panning
+    attributionControl: true,
+    zoomSnap: 0.5,
+  }).setView(routeLatLngs[0], CONFIG.mapZoom);
+
+  // CartoDB Positron — clean light grey base map (OSM data)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 19,
+  }).addTo(leafletMap);
+
+  // White halo behind the route for legibility on the grey map
+  L.polyline(routeLatLngs, {
+    color: '#ffffff', weight: 10, opacity: 0.9,
+    lineCap: 'round', lineJoin: 'round',
+  }).addTo(leafletMap);
+
+  // Pixel sponsor blocks along the route (the dominant interaction)
+  buildPixels();
+
+  // Waypoint markers (cities) — popup on hover, not click
+  CONFIG.route.forEach(w => {
+    const cls = 'waypoint-marker'
+      + (w.role === 'start'  ? ' start'  : '')
+      + (w.role === 'finish' ? ' finish' : '');
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="${cls}"></div>`,
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+    });
+    const marker = L.marker([w.lat, w.lng], { icon, riseOnHover: true })
+      .addTo(leafletMap)
+      .bindPopup(`
+        <h4>${w.name}</h4>
+        <div class="miles">Mile ${w.mile}${w.role === 'finish' ? ' — Finish' : ''}</div>
+        <p>${w.fact}</p>
+      `, { closeButton: false, autoPan: false });
+
+    // Open popup on HOVER, not click (per spec)
+    marker.on('mouseover', () => marker.openPopup());
+    marker.on('mouseout',  () => marker.closePopup());
+  });
+
+  // Animated runner marker (driven by scrubber/scroll)
+  const runnerIcon = L.divIcon({
+    className: '',
+    html: '<div class="runner-marker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12v5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-5z M16 11h2a2.5 2.5 0 0 1 0 5h-2 M7 4c0 1 1 1 1 2s-1 1-1 2 M11 4c0 1 1 1 1 2s-1 1-1 2"/></svg></div>',
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
+  });
+  runnerMarker = L.marker(routeLatLngs[0], { icon: runnerIcon, interactive: false, zIndexOffset: 1000 })
+    .addTo(leafletMap);
+
+  // Refresh map size after layout settles
+  setTimeout(() => leafletMap.invalidateSize(), 200);
+  window.addEventListener('resize', () => leafletMap.invalidateSize());
+}
+
+/* Pre-compute a point along the polyline at fractional distance 0..1. */
+function pointAlongRoute(t) {
+  if (t <= 0) return routeLatLngs[0];
+  if (t >= 1) return routeLatLngs[routeLatLngs.length - 1];
+  const target = t * totalDist;
+  // Find segment containing `target`
+  for (let i = 1; i < cumulativeDist.length; i++) {
+    if (cumulativeDist[i] >= target) {
+      const segStart = cumulativeDist[i-1];
+      const segLen   = cumulativeDist[i] - segStart;
+      const local    = (target - segStart) / segLen;
+      const a = routeLatLngs[i-1];
+      const b = routeLatLngs[i];
+      return [
+        a[0] + (b[0] - a[0]) * local,
+        a[1] + (b[1] - a[1]) * local,
+      ];
+    }
+  }
+  return routeLatLngs[routeLatLngs.length - 1];
+}
+
+/* Build the pixelated, sponsorable route blocks.
+   Each pixel sits at a fractional position along the route
+   and exposes a hover tooltip + click-to-sponsor flow. */
+function buildPixels() {
+  const sponsorByPixel = {};
+  CONFIG.sponsoredPixels.forEach(s => sponsorByPixel[s.pixel] = s);
+
+  for (let i = 1; i <= CONFIG.pixelCount; i++) {
+    const t = (i - 0.5) / CONFIG.pixelCount;
+    const ll = pointAlongRoute(t);
+    const sponsor = sponsorByPixel[i];
+
+    let cls = 'pixel';
+    if (sponsor) {
+      cls += ' pixel--claimed';
+      if (sponsor.tier === 'premium')   cls += ' tier-premium';
+      if (sponsor.tier === 'corporate') cls += ' tier-corporate';
+    }
+
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="${cls}" data-pixel="${i}"></div>`,
+      iconSize: [12, 12],
+      iconAnchor: [6, 6],
+    });
+
+    const marker = L.marker(ll, { icon, riseOnHover: true }).addTo(leafletMap);
+
+    // Hover tooltip with rich sponsor info (if any)
+    let tipHtml;
+    if (sponsor) {
+      tipHtml = `
+        <strong>Pixel ${i} · ${sponsor.sponsor}</strong><br>
+        <span class="amt">£${sponsor.amount.toLocaleString('en-GB')}</span>
+        <span class="msg">"${sponsor.message}"</span>
+      `;
+    } else {
+      tipHtml = `
+        <strong>Pixel ${i} — available</strong><br>
+        <span class="amt">£${CONFIG.pixelPrice} to sponsor this pixel</span>
+        <span class="msg">Click to add your name or logo.</span>
+      `;
+    }
+    marker.bindTooltip(tipHtml, {
+      className: 'pixel-tip',
+      direction: 'top',
+      offset: [0, -6],
+      opacity: 1,
+      sticky: false,
+    });
+
+    // Click an unsponsored pixel -> open the glassmorphism sponsor modal.
+    marker.on('click', () => {
+      if (sponsor) return; // claimed: no click action
+      openSponsorModal(i);
+    });
+  }
+}
+
+/* ================================================================
+   3. SCROLLYTELLING — vertical page scroll drives map pan,
+   the scrubber, and the runner along the route.
+   The scrubber is also INTERACTIVE: drag the cup or click the
+   track and the page scrolls to the matching position.
+   ================================================================ */
+function setupScrollyMap() {
+  const section  = document.getElementById('map-section');
+  const scrubber = document.getElementById('scrubber');
+  const track    = document.getElementById('scrubberTrack');
+  const fill     = document.getElementById('scrubberFill');
+  const cup      = document.getElementById('scrubberCup');
+  const mileTxt  = document.getElementById('scrubberMile');
+  let lastT      = -1;
+  let ticking    = false;
+  let dragging   = false;
+
+  function applyT(t) {
+    t = Math.max(0, Math.min(1, t));
+    if (Math.abs(t - lastT) < 0.0005) return;
+    lastT = t;
+    if (leafletMap && runnerMarker) {
+      const ll = pointAlongRoute(t);
+      leafletMap.panTo(ll, { animate: false, noMoveStart: true });
+      runnerMarker.setLatLng(ll);
+    }
+    const pct = t * 100;
+    fill.style.width = pct + '%';
+    cup.style.left   = pct + '%';
+    const mile = Math.round(t * 190);
+    mileTxt.textContent = mile;
+    cup.setAttribute('aria-valuenow', mile);
+  }
+
+  function update() {
+    if (!dragging) {
+      const rect = section.getBoundingClientRect();
+      const scrollDistance = section.offsetHeight - window.innerHeight;
+      const t = (-rect.top) / scrollDistance;
+      applyT(t);
+    }
+    ticking = false;
+  }
+
+  function onScroll() {
+    if (!ticking) {
+      ticking = true;
+      requestAnimationFrame(update);
+    }
+  }
+
+  /* --- Interactive drag: convert pointer X over the track into
+     scroll position, then scroll the page so the sticky map and
+     scrubber stay in sync. ---------------------------------------- */
+  function pointerToT(e) {
+    const rect = track.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    return Math.max(0, Math.min(1, x / rect.width));
+  }
+
+  function scrollToT(t) {
+    const sectionTop = section.offsetTop;
+    const scrollDistance = section.offsetHeight - window.innerHeight;
+    const targetY = sectionTop + t * scrollDistance;
+    window.scrollTo({ top: targetY, behavior: 'auto' });
+  }
+
+  function onPointerDown(e) {
+    dragging = true;
+    scrubber.classList.add('is-dragging');
+    track.setPointerCapture && track.setPointerCapture(e.pointerId);
+    const t = pointerToT(e);
+    applyT(t);
+    scrollToT(t);
+    e.preventDefault();
+  }
+  function onPointerMove(e) {
+    if (!dragging) return;
+    const t = pointerToT(e);
+    applyT(t);
+    scrollToT(t);
+  }
+  function onPointerUp(e) {
+    if (!dragging) return;
+    dragging = false;
+    scrubber.classList.remove('is-dragging');
+    try { track.releasePointerCapture && track.releasePointerCapture(e.pointerId); } catch (_) {}
+  }
+
+  track.addEventListener('pointerdown', onPointerDown);
+  track.addEventListener('pointermove', onPointerMove);
+  track.addEventListener('pointerup',   onPointerUp);
+  track.addEventListener('pointercancel', onPointerUp);
+
+  // Keyboard support on the cup (it's role="slider")
+  cup.addEventListener('keydown', (e) => {
+    const step = (e.shiftKey ? 10 : 1) / 190;
+    let t = lastT < 0 ? 0 : lastT;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp')   { t += step; e.preventDefault(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { t -= step; e.preventDefault(); }
+    else if (e.key === 'Home') { t = 0; e.preventDefault(); }
+    else if (e.key === 'End')  { t = 1; e.preventDefault(); }
+    else return;
+    applyT(t);
+    scrollToT(t);
+  });
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', update);
+  setTimeout(update, 350);
+}
+
+/* ================================================================
+   4. CLAIM A MILE — slide-up panel (still useful for browsing
+   all 190 sponsorable units in a grid view).
+   ================================================================ */
+function buildMilesGrid() {
+  const grid = document.getElementById('milesGrid');
+  const map = {};
+  CONFIG.sponsoredPixels.forEach(s => map[s.pixel] = s);
+  let claimed = 0;
+
+  for (let i = 1; i <= 190; i++) {
+    const block = document.createElement('div');
+    block.className = 'mile';
+    block.dataset.mile = i;
+    block.setAttribute('role', 'listitem');
+    block.textContent = i;
+
+    const s = map[i];
+    if (s) {
+      claimed++;
+      block.classList.add('mile--claimed');
+      if (s.tier === 'premium')   block.classList.add('tier-premium');
+      if (s.tier === 'corporate') block.classList.add('tier-corporate');
+      block.setAttribute('aria-label',
+        `Pixel ${i} — sponsored by ${s.sponsor}, £${s.amount}`);
+      const tip = document.createElement('div');
+      tip.className = 'mile__tooltip';
+      tip.innerHTML = `
+        <strong>Pixel ${i} · ${s.sponsor}</strong>
+        <span class="amt">£${s.amount.toLocaleString('en-GB')}</span>
+        <div class="msg">"${s.message}"</div>`;
+      block.appendChild(tip);
+    } else {
+      block.title = `Pixel ${i} — click to sponsor (£${CONFIG.pixelPrice})`;
+      block.setAttribute('aria-label', `Pixel ${i} — available to sponsor`);
+      block.addEventListener('click', () => openSponsorModal(i));
+    }
+    grid.appendChild(block);
+  }
+  document.getElementById('statClaimed').textContent = claimed;
+  document.getElementById('statRemaining').textContent = 190 - claimed;
+}
+
+function setupMilePanel() {
+  const panel    = document.getElementById('milePanel');
+  const openBtn  = document.getElementById('claimOpenBtn');
+  const openLink = document.getElementById('claimOpenLink');
+  const navLink  = document.getElementById('navSponsorLink');
+  const closeBtn = document.getElementById('milePanelClose');
+
+  function open(e) {
+    if (e) e.preventDefault();
+    panel.classList.add('is-open');
+    panel.setAttribute('aria-hidden', 'false');
+    document.getElementById('map-section')
+      .scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function close() {
+    panel.classList.remove('is-open');
+    panel.setAttribute('aria-hidden', 'true');
+  }
+  openBtn.addEventListener('click', open);
+  openLink.addEventListener('click', open);
+  if (navLink) navLink.addEventListener('click', open);
+  closeBtn.addEventListener('click', close);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && panel.classList.contains('is-open')) close();
+  });
+}
+
+/* ================================================================
+   COLLAPSIBLE TOTAL-RAISED ORB — default state is OPEN (showing
+   the raised total card). Orange × collapses it to a £ circle.
+   Clicking the £ circle re-opens the card.
+   ================================================================ */
+function setupRaisedOrb() {
+  const orb      = document.getElementById('raisedOrb');
+  const toggle   = document.getElementById('raisedOrbToggle');
+  const closeBtn = document.getElementById('raisedOrbClose');
+
+  function expand() {
+    orb.classList.remove('is-collapsed');
+    toggle.setAttribute('aria-expanded', 'true');
+  }
+  function collapse() {
+    orb.classList.add('is-collapsed');
+    toggle.setAttribute('aria-expanded', 'false');
+  }
+
+  toggle.addEventListener('click', (e) => { e.stopPropagation(); expand(); });
+  closeBtn.addEventListener('click', (e) => { e.stopPropagation(); collapse(); });
+}
+
+/* ================================================================
+   CHARITY MODAL — opens from the hero mini-cards
+   ================================================================ */
+function setupCharityModal() {
+  const modal    = document.getElementById('charityModal');
+  const closeBtn = document.getElementById('charityClose');
+  const eyebrow  = document.getElementById('charityEyebrow');
+  const title    = document.getElementById('charityTitle');
+  const body     = document.getElementById('charityBody');
+  const visit    = document.getElementById('charityVisit');
+
+  const data = {
+    alz: {
+      eyebrow: "Charity 01 · Dementia",
+      title:   "Alzheimer's Society UK",
+      body:    "The UK's leading dementia charity. From dementia advisers and support lines, to peer-support groups and groundbreaking research, Alzheimer's Society stands with everyone affected by dementia — and works towards a cure.",
+      url:     "https://www.alzheimers.org.uk/",
+      modifier:"alz",
+    },
+    ukttbs: {
+      eyebrow: "Charity 02 · Tea Trade",
+      title:   "UK Tea Trade Benevolent Society",
+      body:    "The UKTTBS is the safety net of our industry. It provides confidential financial, practical and emotional support to current and former members of the UK tea trade and their families when life takes an unexpected turn.",
+      url:     "https://www.ukttbs.org/",
+      modifier:"ukttbs",
+    },
+  };
+
+  function open(key) {
+    const c = data[key]; if (!c) return;
+    eyebrow.textContent = c.eyebrow;
+    title.textContent   = c.title;
+    body.textContent    = c.body;
+    visit.href          = c.url;
+    modal.classList.remove('charity-modal--alz', 'charity-modal--ukttbs');
+    modal.classList.add('charity-modal--' + c.modifier);
+    modal.classList.add('is-open');
+  }
+  function close() { modal.classList.remove('is-open'); }
+
+  document.querySelectorAll('.charity-mini').forEach(btn => {
+    btn.addEventListener('click', () => open(btn.dataset.charity));
+  });
+  closeBtn.addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('is-open')) close();
+  });
+}
+
+/* ================================================================
+   5. CAFFEINE BOOST modal
+   ================================================================ */
+/* ================================================================
+   GLASSMORPHISM SPONSOR MODAL — opens for any unsponsored pixel.
+   Lets the user choose £10 (pixel) or £50 (whole mile).
+   ================================================================ */
+let openSponsorModal = () => {}; // assigned in setupSponsorModal
+
+function setupSponsorModal() {
+  const modal     = document.getElementById('sponsorModal');
+  const closeBtn  = document.getElementById('sponsorClose');
+  const eyebrow   = document.getElementById('sponsorEyebrow');
+  const title     = document.getElementById('sponsorTitle');
+  const opts      = modal.querySelectorAll('.sponsor-opt');
+  const continueB = document.getElementById('sponsorContinueBtn');
+  const contAmt   = document.getElementById('sponsorContinueAmt');
+  let currentPixel = 1;
+  let currentAmount = CONFIG.pixelPrice;
+  let currentScope  = 'pixel';
+
+  function selectOpt(opt) {
+    opts.forEach(o => { o.classList.remove('is-selected'); o.setAttribute('aria-checked', 'false'); });
+    opt.classList.add('is-selected');
+    opt.setAttribute('aria-checked', 'true');
+    currentAmount = parseInt(opt.dataset.amount, 10);
+    currentScope  = opt.dataset.scope;
+    contAmt.textContent = '£' + currentAmount;
+    title.innerHTML = currentScope === 'mile'
+      ? 'Sponsor a <strong>whole mile</strong>.'
+      : 'Sponsor a <strong>pixel</strong>.';
+  }
+  opts.forEach(opt => opt.addEventListener('click', () => selectOpt(opt)));
+
+  openSponsorModal = function (pixelNum) {
+    currentPixel = pixelNum;
+    eyebrow.textContent = `Pixel ${pixelNum} · Mile ${pixelNum}`;
+    selectOpt(modal.querySelector('.sponsor-opt[data-scope="pixel"]'));
+    modal.classList.add('is-open');
+  };
+
+  function close() { modal.classList.remove('is-open'); }
+  closeBtn.addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('is-open')) close();
+  });
+
+  continueB.addEventListener('click', () => {
+    // TODO: hand off to JustGiving / Stripe with currentPixel + currentAmount + currentScope
+    alert(`Sponsoring ${currentScope === 'mile' ? 'mile' : 'pixel'} ${currentPixel} for £${currentAmount}.\n\nWire this up to your donation provider.`);
+    close();
+  });
+}
+
+function setupCaffeineBoost() {
+  const btn     = document.getElementById('caffeineBtn');
+  const modal   = document.getElementById('caffeineModal');
+  const content = document.getElementById('caffeineContent');
+  const closeB  = document.getElementById('caffeineClose');
+  const teacup  = content.querySelector('.teacup');
+
+  const colors = ['#f56600', '#1a73e8', '#ffd54f', '#202124'];
+  for (let i = 0; i < 22; i++) {
+    const p = document.createElement('span');
+    p.className = 'confetti-piece';
+    p.style.background = colors[i % colors.length];
+    const angle = (Math.PI * 2 * i) / 22;
+    const dist  = 80 + Math.random() * 60;
+    p.style.setProperty('--cx', Math.cos(angle) * dist + 'px');
+    p.style.setProperty('--cy', (Math.sin(angle) * dist - 60) + 'px');
+    p.style.animationDelay = (Math.random() * 0.2) + 's';
+    teacup.appendChild(p);
+  }
+
+  const open  = () => { modal.classList.add('is-open');
+                        requestAnimationFrame(() => content.classList.add('is-boosting')); };
+  const close = () => { modal.classList.remove('is-open');
+                        content.classList.remove('is-boosting'); };
+  btn.addEventListener('click', open);
+  closeB.addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('is-open')) close();
+  });
+}
+
+/* ================================================================
+   COUNTDOWN — progress from 01 Jan 2026 → Fri 02 Apr 2027.
+   Animates the bar to current % on load and renders days-to-go.
+   ================================================================ */
+function setupCountdown() {
+  const start = new Date('2026-01-01T00:00:00');
+  const end   = new Date('2027-04-02T00:00:00'); // Friday
+  const fill   = document.getElementById('countdownFill');
+  const marker = document.getElementById('countdownMarker');
+  const bar    = document.getElementById('countdownBar');
+  const days   = document.getElementById('countdownDays');
+  const daysLbl= document.getElementById('countdownDaysLbl');
+  if (!fill || !days) return;
+
+  const now = new Date();
+  const total = end - start;
+  const elapsed = Math.max(0, Math.min(total, now - start));
+  const pct = (elapsed / total) * 100;
+
+  // Days remaining (ceil so today still counts as a full day)
+  const MS_PER_DAY = 1000 * 60 * 60 * 24;
+  const remaining = Math.max(0, Math.ceil((end - now) / MS_PER_DAY));
+
+  days.textContent = remaining.toLocaleString('en-GB');
+  daysLbl.textContent = remaining === 1 ? 'day remaining' : 'days remaining';
+  if (remaining === 0) { daysLbl.textContent = 'run day!'; }
+
+  bar.setAttribute('aria-valuenow', Math.round(pct));
+  // Defer one frame so the CSS transition runs (0% → pct%)
+  requestAnimationFrame(() => {
+    fill.style.width = pct + '%';
+    marker.style.left = pct + '%';
+  });
+}
+
+/* ================================================================
+   HEADER AUTO-HIDE — hides on scroll-down, returns on scroll-up.
+   ================================================================ */
+function setupHeaderAutoHide() {
+  const header = document.getElementById('siteHeader');
+  if (!header) return;
+  let lastY = window.scrollY;
+  let ticking = false;
+  const THRESHOLD = 6;     // ignore micro-scrolls
+  const TOP_GUARD = 80;    // always show near the top
+
+  function update() {
+    const y = window.scrollY;
+    const delta = y - lastY;
+    if (Math.abs(delta) > THRESHOLD) {
+      if (y > TOP_GUARD && delta > 0) {
+        header.classList.add('is-hidden');     // scrolling down
+      } else {
+        header.classList.remove('is-hidden');  // scrolling up
+      }
+      lastY = y;
+    }
+    ticking = false;
+  }
+  window.addEventListener('scroll', () => {
+    if (!ticking) { ticking = true; requestAnimationFrame(update); }
+  }, { passive: true });
+}
+
+/* ================================================================
+   INIT
+   ================================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  animateRaised();
+  setupCountdown();
+  setupHeaderAutoHide();
+  setupMap();
+  setupScrollyMap();
+  buildMilesGrid();
+  setupMilePanel();
+  setupSponsorModal();
+  setupCaffeineBoost();
+  setupRaisedOrb();
+  setupCharityModal();
+});
+</script>
+</body>
+</html>
