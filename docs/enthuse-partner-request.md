@@ -1,8 +1,8 @@
 # Enthuse partner-API request — draft email
 
-**To:** `partners@enthuse.com` (cc your contact at Alzheimer's Society if
+**To:** `partners@enthuse.com` (cc your contact at Alzheimer's Research UK if
 they introduced you)
-**Subject:** Custom-field webhook access for charity-run microsite (Alzheimer's Society + UKTTBS)
+**Subject:** Custom-field webhook access for charity-run microsite (Alzheimer's Research UK + UKTTBS)
 
 ---
 
@@ -10,7 +10,7 @@ Hi Enthuse team,
 
 I'm running a sponsored ultra in April 2027 — 190 miles from Peterston
 Tea Estate in Wales to the Cutty Sark in London — split 50/50 between
-**Alzheimer's Society UK** and the **UK Tea Trade Benevolent Society**.
+**Alzheimer's Research UK** and the **UK Tea Trade Benevolent Society**.
 
 The campaign sits at **`run.teatrade.co.uk`** and has a "Sponsor a Mile"
 mechanic: each of the 190 miles can be sponsored individually (£50

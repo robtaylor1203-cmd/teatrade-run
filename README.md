@@ -2,7 +2,7 @@
 
 Single-page charity-run microsite for `run.teatrade.co.uk` — 190 miles from
 Peterston Tea Estate (Wales) to the Cutty Sark (London) in support of
-**Alzheimer's Society UK** and the **UK Tea Trade Benevolent Society**.
+**Alzheimer's Research UK** and the **UK Tea Trade Benevolent Society**.
 
 ## Donation flow (Enthuse + Cloudflare Pages)
 
