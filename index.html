@@ -2354,28 +2354,9 @@ function setupMap() {
     scrollWheelZoom: false, // we hijack vertical scroll for panning
     attributionControl: true,
     zoomSnap: 0.5,
-
-    <!-- ===============================
-         PASSWORD PROTECT OVERLAY
-         =============================== -->
-    <div id="pwProtect" style="position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:rgba(20,22,26,0.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);">
-      <div style="background:var(--panel);border-radius:22px;box-shadow:0 24px 60px rgba(0,0,0,0.18);border:1px solid var(--hairline);padding:38px 36px 32px;max-width:340px;width:100%;display:flex;flex-direction:column;align-items:center;">
-        <svg style="width:38px;height:38px;color:var(--accent);margin-bottom:18px;"><use href="#i-tea"/></svg>
-        <h3 style="font-weight:400;font-size:1.3rem;letter-spacing:-0.01em;margin-bottom:10px;color:var(--accent);">Password Required</h3>
-        <div style="font-size:0.98rem;color:var(--muted);margin-bottom:18px;text-align:center;">This site is currently password protected.<br>Enter the password to continue.</div>
-        <form id="pwForm" autocomplete="off" style="width:100%;display:flex;flex-direction:column;gap:12px;">
-          <input id="pwInput" type="password" inputmode="text" placeholder="Password" style="font:inherit;border:1.5px solid var(--accent);background:var(--bg);color:var(--text);border-radius:10px;padding:12px 14px;font-size:1.1rem;text-align:center;outline:none;" autofocus />
-          <button type="submit" class="btn btn-blue" style="width:100%;justify-content:center;">Unlock</button>
-          <div id="pwError" style="color:#b22a36;font-size:0.92rem;min-height:1.2em;text-align:center;"></div>
-        </form>
-        <div style="margin-top:18px;font-size:0.78rem;color:var(--muted);text-align:center;">Password hint: <span style="color:var(--accent);font-weight:500;">run.teatrade</span></div>
-      </div>
-    </div>
-
   }).setView(routeLatLngs[0], CONFIG.mapZoom);
 
   // CartoDB Positron — clean light grey base map (OSM data)
-
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
     subdomains: 'abcd',
