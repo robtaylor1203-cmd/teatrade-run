@@ -147,6 +147,17 @@ button { font-family: inherit; }
   font-weight: 300;
 }
 .hero-route { margin-top: 28px; }
+.hero-route .route-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.btn-track {
+  padding: 10px 18px;
+  font-size: 0.85rem;
+}
+.btn-track svg { width: 16px; height: 16px; }
 .hero-route .eyebrow {
   font-size: 0.72rem;
   color: var(--muted);
@@ -1116,7 +1127,8 @@ button { font-family: inherit; }
    The .charity-modal / .charity-glass alias the same look.
    ============================================================= */
 .sponsor-modal,
-.charity-modal {
+.charity-modal,
+.strava-modal {
   position: fixed; inset: 0;
   background: rgba(20, 22, 26, 0.72);
   backdrop-filter: blur(6px);
@@ -1130,9 +1142,11 @@ button { font-family: inherit; }
 .charity-modal.charity-modal--alz,
 .charity-modal.charity-modal--ukttbs { background: rgba(20, 22, 26, 0.72); }
 .sponsor-modal.is-open,
-.charity-modal.is-open { display: flex; }
+.charity-modal.is-open,
+.strava-modal.is-open { display: flex; }
 .sponsor-glass,
-.charity-glass {
+.charity-glass,
+.strava-glass {
   position: relative;
   width: 100%;
   max-width: 480px;
@@ -1147,7 +1161,8 @@ button { font-family: inherit; }
   transition: transform .25s cubic-bezier(.2,.8,.2,1), opacity .25s ease;
 }
 .sponsor-modal.is-open .sponsor-glass,
-.charity-modal.is-open .charity-glass { transform: scale(1); opacity: 1; }
+.charity-modal.is-open .charity-glass,
+.strava-modal.is-open .strava-glass { transform: scale(1); opacity: 1; }
 .sponsor-glass__close {
   position: absolute;
   top: 14px; right: 18px;
@@ -1161,7 +1176,8 @@ button { font-family: inherit; }
 }
 .sponsor-glass__close:hover { color: var(--text); border-color: var(--text); }
 .sponsor-glass .eyebrow,
-.charity-glass .eyebrow {
+.charity-glass .eyebrow,
+.strava-glass .eyebrow {
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.14em;
@@ -1171,13 +1187,59 @@ button { font-family: inherit; }
 }
 .charity-modal--ukttbs .charity-glass .eyebrow { color: var(--accent); }
 .sponsor-glass h3,
-.charity-glass h3 {
+.charity-glass h3,
+.strava-glass h3 {
   font-weight: 300;
   font-size: 1.8rem;
   letter-spacing: -0.02em;
   margin-bottom: 6px;
 }
 .sponsor-glass h3 strong { font-weight: 500; color: var(--accent-orange); }
+.strava-glass h3 strong { font-weight: 500; color: var(--accent-orange); }
+
+/* Strava stats grid — 4 mini cards */
+.strava-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 18px 0 10px;
+}
+.strava-stat {
+  background: var(--bg);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.strava-stat__num {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--accent-orange);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.strava-stat__num small { font-size: 0.7em; color: var(--muted); font-weight: 400; margin-left: 4px; }
+.strava-stat__lbl {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 4px;
+}
+.strava-meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 6px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.strava-meta .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #fc4c02; /* Strava orange */
+  display: inline-block;
+}
 .sponsor-glass .lede,
 .charity-glass .lede {
   color: var(--muted);
@@ -1453,7 +1515,12 @@ button { font-family: inherit; }
         </p>
         <div class="hero-route">
           <div class="eyebrow">The Run</div>
-          <div class="route">Peterston <svg style="width:12px;height:12px;color:var(--muted);vertical-align:-1px;"><use href="#i-arrow"/></svg> Greenwich · <strong>190 mi</strong></div>
+          <div class="route-row">
+            <div class="route">Peterston <svg style="width:12px;height:12px;color:var(--muted);vertical-align:-1px;"><use href="#i-arrow"/></svg> Greenwich · <strong>190 mi</strong></div>
+            <button class="btn btn-primary btn-track" id="trackTrainingBtn" type="button">
+              <svg><use href="#i-runner"/></svg> Track the Training
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1653,6 +1720,54 @@ button { font-family: inherit; }
 </div>
 
 <!-- =====================================================
+     STRAVA "TRACK THE TRAINING" MODAL
+     ===================================================== -->
+<div class="strava-modal" id="stravaModal" role="dialog" aria-modal="true" aria-labelledby="stravaTitle">
+  <div class="strava-glass">
+    <button class="sponsor-glass__close" id="stravaClose" aria-label="Close">×</button>
+    <div class="eyebrow">Training log · live from Strava</div>
+    <h3 id="stravaTitle">Track the <strong>training</strong>.</h3>
+    <p class="lede" style="color:var(--muted);font-weight:300;font-size:0.95rem;margin-bottom:6px;">
+      Every run on the road to the start line — stats refresh from my Strava feed.
+    </p>
+    <div class="strava-meta">
+      <span class="dot"></span>
+      <span id="stravaStatus">Counting from <strong id="stravaSince">today</strong></span>
+    </div>
+
+    <div class="strava-stats" id="stravaStats">
+      <div class="strava-stat">
+        <div class="strava-stat__num"><span id="stravaDist">—</span><small>mi</small></div>
+        <div class="strava-stat__lbl">Total distance</div>
+      </div>
+      <div class="strava-stat">
+        <div class="strava-stat__num" id="stravaTime">—</div>
+        <div class="strava-stat__lbl">Total time</div>
+      </div>
+      <div class="strava-stat">
+        <div class="strava-stat__num" id="stravaPace">—</div>
+        <div class="strava-stat__lbl">Avg pace / mi</div>
+      </div>
+      <div class="strava-stat">
+        <div class="strava-stat__num"><span id="stravaElev">—</span><small>ft</small></div>
+        <div class="strava-stat__lbl">Elevation gain</div>
+      </div>
+      <div class="strava-stat" style="grid-column: 1 / -1;">
+        <div class="strava-stat__num" id="stravaRuns">—</div>
+        <div class="strava-stat__lbl">Runs logged</div>
+      </div>
+    </div>
+
+    <a class="btn btn-primary" id="stravaProfileLink" href="#" target="_blank" rel="noopener" style="width:100%;justify-content:center;">
+      View on Strava ↗
+    </a>
+    <div class="small" style="margin-top:10px;color:var(--muted);font-size:0.78rem;text-align:center;">
+      Stats refresh automatically · counted from <span id="stravaSinceFoot">today</span>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
      CAFFEINE BOOST MODAL
      ===================================================== -->
 <div class="caffeine-modal" id="caffeineModal" role="dialog" aria-modal="true">
@@ -1689,7 +1804,7 @@ const CONFIG = {
      dots on the map (matching the legend) and open the sponsor modal
      in its premium variant (£100, blue accents). Avoid overlap with
      sponsoredPixels below — those are already claimed. */
-  premiumMiles: [7, 20, 35, 42, 57, 70, 85, 105, 130, 145, 165, 180],
+  premiumMiles: [1, 7, 20, 35, 42, 57, 70, 85, 105, 130, 145, 165, 180],
 
   /* When scrolly-mapping, how zoomed-in to be while panning. */
   mapZoom: 10,
@@ -1721,7 +1836,6 @@ const CONFIG = {
      Once a real donation flow is wired in, build this array from
      your backend / JustGiving / Stripe. */
   sponsoredPixels: [
-    { pixel: 1,   sponsor: "Peterston Tea Estate", initials: "PT", logoBg: "#0e7c4a", amount: 500,  tier: "premium",   message: "Where it all begins. Run strong!" },
     { pixel: 14,  sponsor: "Welsh Tea Co.",        initials: "WT", logoBg: "#c8102e", amount: 50,   tier: "standard",  message: "Cymru am byth! Keep going." },
     { pixel: 27,  sponsor: "Severn Crossings Ltd", initials: "SC", logoBg: "#1a73e8", amount: 25,   tier: "standard",  message: "Goodbye Wales, hello England." },
     { pixel: 50,  sponsor: "Bristol Brew Bar",     initials: "BB", logoBg: "#6a4c2a", amount: 50,   tier: "standard",  message: "Halfway to halfway — easy!" },
@@ -2331,6 +2445,86 @@ function setupSponsorModal() {
   });
 }
 
+/* ================================================================
+   STRAVA "TRACK THE TRAINING" MODAL
+   Loads ./strava-stats.json (generated by a small server-side
+   script that talks to the Strava API). Falls back to em-dashes
+   while the file is missing or empty.
+   ================================================================ */
+function setupStravaModal() {
+  const btn     = document.getElementById('trackTrainingBtn');
+  const modal   = document.getElementById('stravaModal');
+  const closeB  = document.getElementById('stravaClose');
+  if (!btn || !modal) return;
+
+  // "Counting from" date — today (first time the page is opened on
+  // this device) is fine for visual context. The real filtering is
+  // done server-side in the script that produces strava-stats.json.
+  const SINCE_KEY = 'tt-strava-since';
+  let sinceISO = localStorage.getItem(SINCE_KEY);
+  if (!sinceISO) {
+    sinceISO = new Date().toISOString().slice(0, 10);
+    try { localStorage.setItem(SINCE_KEY, sinceISO); } catch (_) {}
+  }
+  const sinceLabel = new Date(sinceISO).toLocaleDateString('en-GB',
+    { day: 'numeric', month: 'short', year: 'numeric' });
+  document.getElementById('stravaSince').textContent = sinceLabel;
+  document.getElementById('stravaSinceFoot').textContent = sinceLabel;
+
+  function fmtTime(seconds) {
+    if (!seconds || seconds < 0) return '—';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  }
+  function fmtPace(secPerMile) {
+    if (!secPerMile || secPerMile <= 0) return '—';
+    const m = Math.floor(secPerMile / 60);
+    const s = Math.round(secPerMile % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  function paint(stats) {
+    const dist = stats.distance_miles ?? 0;
+    const time = stats.moving_time_seconds ?? 0;
+    const elev = stats.elevation_gain_feet ?? 0;
+    const runs = stats.run_count ?? 0;
+    const pace = (dist > 0 && time > 0) ? (time / dist) : 0;
+
+    document.getElementById('stravaDist').textContent = dist.toFixed(1);
+    document.getElementById('stravaTime').textContent = fmtTime(time);
+    document.getElementById('stravaPace').textContent = fmtPace(pace);
+    document.getElementById('stravaElev').textContent = Math.round(elev).toLocaleString('en-GB');
+    document.getElementById('stravaRuns').textContent = runs;
+
+    if (stats.athlete_url) {
+      document.getElementById('stravaProfileLink').href = stats.athlete_url;
+    }
+    if (stats.since) {
+      const lbl = new Date(stats.since).toLocaleDateString('en-GB',
+        { day: 'numeric', month: 'short', year: 'numeric' });
+      document.getElementById('stravaSince').textContent = lbl;
+      document.getElementById('stravaSinceFoot').textContent = lbl;
+    }
+  }
+
+  // Try to load real stats. File is generated by a separate script
+  // (see README) and committed/deployed alongside the site.
+  fetch('./strava-stats.json', { cache: 'no-store' })
+    .then(r => r.ok ? r.json() : null)
+    .then(stats => { if (stats) paint(stats); })
+    .catch(() => {});
+
+  function open() { modal.classList.add('is-open'); }
+  function close() { modal.classList.remove('is-open'); }
+  btn.addEventListener('click', open);
+  closeB.addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('is-open')) close();
+  });
+}
+
 function setupCaffeineBoost() {
   const btn     = document.getElementById('caffeineBtn');
   const modal   = document.getElementById('caffeineModal');
@@ -2442,6 +2636,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupCaffeineBoost();
   setupRaisedOrb();
   setupCharityModal();
+  setupStravaModal();
 });
 </script>
 </body>
