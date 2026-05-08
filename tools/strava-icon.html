@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Strava App Icon · TeaTrade Run</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  body {
+    font: 15px/1.5 -apple-system, system-ui, sans-serif;
+    color: #202124; background: #f5f5f7;
+    max-width: 720px; margin: 40px auto; padding: 24px;
+    text-align: center;
+  }
+  h1 { font-weight: 500; }
+  canvas {
+    background: #fff; border: 1px solid #ddd; border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    margin: 16px;
+  }
+  .row { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; align-items: center; }
+  button, a.btn {
+    display: inline-block;
+    margin: 8px; padding: 10px 18px;
+    border: 0; border-radius: 8px;
+    background: #fc4c02; color: #fff !important; font: inherit; font-weight: 500;
+    cursor: pointer; text-decoration: none;
+  }
+  button.alt, a.alt { background: #1a73e8; }
+  .small { color: #666; font-size: 0.85rem; margin-top: 24px; }
+</style>
+</head>
+<body>
+<h1>TeaTrade Run — Strava app icon</h1>
+<p>Download as PNG and upload at <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener">strava.com/settings/api</a> (Strava wants square PNG/JPG, ≥124px).</p>
+
+<div class="row">
+  <canvas id="cv1" width="256" height="256" aria-label="Icon preview 256"></canvas>
+  <canvas id="cv2" width="512" height="512" style="width:256px;height:256px" aria-label="Icon preview 512"></canvas>
+</div>
+
+<div>
+  <button id="dl256">Download 256×256 PNG</button>
+  <button id="dl512" class="alt">Download 512×512 PNG (recommended)</button>
+  <a class="btn alt" href="strava-app-icon.svg" download>Download SVG source</a>
+</div>
+
+<p class="small">Blue → orange gradient ring matches the site palette. Tea cup with a running figure inside; tiny blue dot for the finish line.</p>
+
+<script>
+fetch('strava-app-icon.svg')
+  .then(r => r.text())
+  .then(svg => {
+    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const img  = new Image();
+    img.onload = () => {
+      for (const id of ['cv1','cv2']) {
+        const c = document.getElementById(id);
+        const ctx = c.getContext('2d');
+        ctx.clearRect(0,0,c.width,c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+      }
+    };
+    img.src = url;
+  });
+
+function download(canvasId, filename) {
+  const c = document.getElementById(canvasId);
+  c.toBlob((blob) => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+  }, 'image/png');
+}
+document.getElementById('dl256').onclick = () => download('cv1', 'teatrade-strava-icon-256.png');
+document.getElementById('dl512').onclick = () => download('cv2', 'teatrade-strava-icon-512.png');
+</script>
+</body>
+</html>
