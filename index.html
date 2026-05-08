@@ -3322,9 +3322,7 @@ function setupStravaModal() {
     document.getElementById('stravaElev').textContent = Math.round(elev).toLocaleString('en-GB');
     document.getElementById('stravaRuns').textContent = runs;
 
-    if (stats.athlete_url) {
-      document.getElementById('stravaProfileLink').href = stats.athlete_url;
-    }
+    // Profile link is hardcoded to vanity URL in the HTML; do not overwrite.
     if (stats.since) {
       const lbl = new Date(stats.since).toLocaleDateString('en-GB',
         { day: 'numeric', month: 'short', year: 'numeric' });
