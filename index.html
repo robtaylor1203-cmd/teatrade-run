@@ -703,7 +703,20 @@ button { font-family: inherit; }
   font-size: 0.85rem;
   font-weight: 500;
   color: var(--accent-orange);
-  margin-top: 4px;
+  margin-top: 8px;
+}
+/* Placeholder rows for the "Available" state — keep the same visual
+   rhythm as a real sponsor card so visitors see what their entry
+   would look like once filled in. */
+.sponsor-card__name--placeholder {
+  color: var(--muted);
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: 0;
+}
+.sponsor-card__msg--placeholder {
+  color: var(--muted);
+  opacity: 0.85;
 }
 @media (max-width: 480px) {
   .sponsor-card { width: 280px; }
@@ -1843,9 +1856,10 @@ function sponsorCardHTML(mileNum, sponsor) {
       `
     : `
         <div class="sponsor-card__eyebrow">Mile ${mileNum} · Available</div>
-        <div class="sponsor-card__name">Sponsor this mile</div>
-        <div class="sponsor-card__amt">From £${CONFIG.pixelPrice}</div>
-        <div class="sponsor-card__cta">Click to add your name, message or logo →</div>
+        <div class="sponsor-card__name sponsor-card__name--placeholder">— your name here —</div>
+        <div class="sponsor-card__amt">£50</div>
+        <div class="sponsor-card__msg sponsor-card__msg--placeholder">“ — your message here — ”</div>
+        <div class="sponsor-card__cta">Click to sponsor this mile →</div>
       `;
 
   return `<div class="sponsor-card">${logoBlock}<div class="sponsor-card__body">${body}</div></div>`;
