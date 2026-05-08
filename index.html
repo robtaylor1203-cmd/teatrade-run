@@ -2359,10 +2359,10 @@ function buildMilesGrid() {
       block.setAttribute('aria-label', `Mile ${i} — available to sponsor`);
     }
 
-    // Flip tooltip downward for the top two rows (miles 1–38) so it
+    // Flip tooltip downward for the top three rows (miles 1–57) so it
     // doesn't get clipped by the panel header.
     const row = Math.ceil(i / 19);
-    if (row <= 2) block.classList.add('mile--flip');
+    if (row <= 3) block.classList.add('mile--flip');
     // Anchor tooltip to the cell edge for the leftmost / rightmost
     // columns so the wide card never overflows the panel.
     const col = ((i - 1) % 19) + 1;
