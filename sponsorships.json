@@ -1,0 +1,19 @@
+{
+  "updated": "2026-05-08T00:00:00Z",
+  "raised_total": 4250,
+  "raised_goal": 19000,
+  "sponsorships": [
+    { "pixel": 14,  "sponsor": "Welsh Tea Co.",        "initials": "WT", "logoBg": "#c8102e", "logo": null, "amount": 50,  "tier": "standard",  "message": "Cymru am byth! Keep going." },
+    { "pixel": 27,  "sponsor": "Severn Crossings Ltd", "initials": "SC", "logoBg": "#1a73e8", "logo": null, "amount": 25,  "tier": "standard",  "message": "Goodbye Wales, hello England." },
+    { "pixel": 50,  "sponsor": "Bristol Brew Bar",     "initials": "BB", "logoBg": "#6a4c2a", "logo": null, "amount": 50,  "tier": "standard",  "message": "Halfway to halfway \u2014 easy!" },
+    { "pixel": 64,  "sponsor": "Bath Tea Rooms",       "initials": "BT", "logoBg": "#b87333", "logo": null, "amount": 30,  "tier": "standard",  "message": "Roman roads still hurt." },
+    { "pixel": 75,  "sponsor": "Acme Tea Importers",   "initials": "AT", "logoBg": "#202124", "logo": null, "amount": 250, "tier": "corporate", "message": "Proud sponsors of one tired runner." },
+    { "pixel": 96,  "sponsor": "The Tasting Room",     "initials": "TR", "logoBg": "#5f6368", "logo": null, "amount": 100, "tier": "standard",  "message": "Halfway hero!" },
+    { "pixel": 120, "sponsor": "Berkshire Brews",      "initials": "BB", "logoBg": "#0b6e4f", "logo": null, "amount": 40,  "tier": "standard",  "message": "One foot, then the other." },
+    { "pixel": 138, "sponsor": "Reading Roasters",     "initials": "RR", "logoBg": "#7a2e2e", "logo": null, "amount": 50,  "tier": "standard",  "message": "Nearly there \u2014 kettle is on." },
+    { "pixel": 155, "sponsor": "Henley Hounds RC",     "initials": "HH", "logoBg": "#1a73e8", "logo": null, "amount": 35,  "tier": "standard",  "message": "From the river crew." },
+    { "pixel": 170, "sponsor": "Thames Tea Co.",       "initials": "TT", "logoBg": "#202124", "logo": null, "amount": 250, "tier": "corporate", "message": "Just follow the river home." },
+    { "pixel": 185, "sponsor": "Greenwich Gazette",    "initials": "GG", "logoBg": "#3a5a40", "logo": null, "amount": 75,  "tier": "standard",  "message": "Final push! See you at the Sark." }
+  ],
+  "pending": []
+}

@@ -17,6 +17,11 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
+<!-- Cloudinary upload widget — used by the Sponsor form for optional
+     company logo uploads. Returns a hosted URL we forward to Enthuse
+     and persist on the confirmed pixel. -->
+<script src="https://upload-widget.cloudinary.com/global/all.js" async></script>
+
 <style>
 /* =============================================================
    ROOT — two accents (orange + blue), neutral palette,
@@ -1391,6 +1396,114 @@ button { font-family: inherit; }
 .sponsor-card.is-premium .sponsor-card__amt,
 .sponsor-card.is-premium .sponsor-card__cta { color: var(--gold-deep); }
 
+/* ================================================================
+   SPONSOR DETAILS FORM — step 2 of the donation flow
+   ================================================================ */
+.sponsor-glass--wide { max-width: 540px; }
+.sponsor-form { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
+.sponsor-form__type {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  border: none;
+  padding: 0;
+  margin: 0 0 4px;
+}
+.sponsor-form__type legend {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+.sponsor-form__radio {
+  position: relative;
+  display: block;
+  cursor: pointer;
+  border-radius: 12px;
+  padding: 14px 16px;
+  transition: transform .12s ease;
+}
+.sponsor-form__radio input { position: absolute; opacity: 0; pointer-events: none; }
+.sponsor-form__radio-bg {
+  position: absolute; inset: 0;
+  border: 1.5px solid var(--hairline);
+  background: var(--bg);
+  border-radius: 12px;
+  transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
+}
+.sponsor-form__radio:hover .sponsor-form__radio-bg { border-color: var(--text); }
+.sponsor-form__radio input:checked ~ .sponsor-form__radio-bg {
+  border-color: var(--accent-orange);
+  background: rgba(245,102,0,0.06);
+  box-shadow: 0 4px 14px rgba(245,102,0,.15);
+}
+.sponsor-form__radio-label {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.85rem;
+}
+.sponsor-form__radio-label strong { font-weight: 500; color: var(--text); }
+.sponsor-form__radio-label span { color: var(--muted); font-size: 0.78rem; }
+.sponsor-form__field { display: flex; flex-direction: column; gap: 6px; }
+.sponsor-form__label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.sponsor-form__hint { text-transform: none; letter-spacing: 0; opacity: 0.85; }
+.sponsor-form input[type="text"],
+.sponsor-form input[type="email"],
+.sponsor-form textarea {
+  font: inherit;
+  border: 1.5px solid var(--hairline);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px 14px;
+  resize: vertical;
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+.sponsor-form input:focus,
+.sponsor-form textarea:focus {
+  outline: none;
+  border-color: var(--accent-orange);
+  box-shadow: 0 0 0 3px rgba(245,102,0,0.15);
+}
+.sponsor-form__logo-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sponsor-form__logo-status { font-size: 0.82rem; color: var(--muted); }
+.sponsor-form__error {
+  background: rgba(220, 53, 69, 0.08);
+  border: 1px solid rgba(220, 53, 69, 0.35);
+  color: #b22a36;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+}
+.sponsor-modal.is-premium  .sponsor-form__radio input:checked ~ .sponsor-form__radio-bg {
+  border-color: var(--gold-deep);
+  background: rgba(197,165,114,0.12);
+  box-shadow: 0 4px 14px rgba(168,134,80,0.18);
+}
+.sponsor-modal.is-featured .sponsor-form__radio input:checked ~ .sponsor-form__radio-bg {
+  border-color: var(--accent);
+  background: rgba(26,115,232,0.06);
+  box-shadow: 0 4px 14px rgba(26,115,232,0.18);
+}
+.sponsor-modal.is-premium  .sponsor-form input:focus,
+.sponsor-modal.is-premium  .sponsor-form textarea:focus {
+  border-color: var(--gold-deep);
+  box-shadow: 0 0 0 3px rgba(197,165,114,0.18);
+}
+.sponsor-modal.is-featured .sponsor-form input:focus,
+.sponsor-modal.is-featured .sponsor-form textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(26,115,232,0.15);
+}
+
 /* Featured variant of the sponsor modal — every-10th-mile blue accent. */
 .sponsor-modal.is-featured .sponsor-glass h3 strong { color: var(--accent); }
 .sponsor-modal.is-featured .eyebrow { color: var(--accent); }
@@ -1830,6 +1943,74 @@ button { font-family: inherit; }
       Continue · <span id="sponsorContinueAmt">£10</span>
     </button>
     <div class="small">Secure checkout via GiveWheel · 100% to charity</div>
+  </div>
+</div>
+
+<!-- =====================================================
+     SPONSOR DETAILS FORM — second step of the modal
+     ===================================================== -->
+<div class="sponsor-modal" id="sponsorFormModal" role="dialog" aria-modal="true" aria-labelledby="sponsorFormTitle">
+  <div class="sponsor-glass sponsor-glass--wide">
+    <button class="sponsor-glass__close" id="sponsorFormClose" aria-label="Close">×</button>
+    <div class="eyebrow" id="sponsorFormEyebrow">Mile 1 of 190</div>
+    <h3 id="sponsorFormTitle">Tell us how to <strong>credit</strong> your mile.</h3>
+    <p class="lede">We'll display this beside your pixel on the map and in the sponsor panel. Donation is taken on Enthuse — we never see your card details.</p>
+
+    <form id="sponsorForm" class="sponsor-form" novalidate>
+      <fieldset class="sponsor-form__type" aria-label="Sponsoring as">
+        <legend>Sponsoring as</legend>
+        <label class="sponsor-form__radio">
+          <input type="radio" name="donor_type" value="individual" checked>
+          <span class="sponsor-form__radio-bg"></span>
+          <span class="sponsor-form__radio-label">
+            <strong>Individual</strong>
+            <span>Your name on the pixel.</span>
+          </span>
+        </label>
+        <label class="sponsor-form__radio">
+          <input type="radio" name="donor_type" value="corporate">
+          <span class="sponsor-form__radio-bg"></span>
+          <span class="sponsor-form__radio-label">
+            <strong>Business</strong>
+            <span>Company name + optional logo.</span>
+          </span>
+        </label>
+      </fieldset>
+
+      <label class="sponsor-form__field">
+        <span class="sponsor-form__label" id="sponsorNameLabel">Your name</span>
+        <input type="text" name="sponsor_name" id="sponsorNameInput" maxlength="80" required
+               placeholder="e.g. Jane Smith">
+      </label>
+
+      <label class="sponsor-form__field">
+        <span class="sponsor-form__label">Message <span class="sponsor-form__hint">(optional, 200 chars)</span></span>
+        <textarea name="message" id="sponsorMessageInput" maxlength="200" rows="2"
+                  placeholder="Cheering you on to Greenwich!"></textarea>
+      </label>
+
+      <div class="sponsor-form__field sponsor-form__logo" id="sponsorLogoField" hidden>
+        <span class="sponsor-form__label">Company logo <span class="sponsor-form__hint">(optional, PNG / SVG, square works best)</span></span>
+        <div class="sponsor-form__logo-row">
+          <button type="button" class="btn btn-ghost" id="sponsorLogoBtn">Upload logo</button>
+          <span class="sponsor-form__logo-status" id="sponsorLogoStatus">No file selected</span>
+        </div>
+        <input type="hidden" name="logo_url" id="sponsorLogoUrl">
+      </div>
+
+      <label class="sponsor-form__field">
+        <span class="sponsor-form__label">Email <span class="sponsor-form__hint">(so we can chase a missed donation)</span></span>
+        <input type="email" name="contact_email" id="sponsorEmailInput" required
+               placeholder="you@example.com">
+      </label>
+
+      <div class="sponsor-form__error" id="sponsorFormError" role="alert" hidden></div>
+
+      <button type="submit" class="btn btn-primary" id="sponsorFormSubmit">
+        Continue to Enthuse · <span id="sponsorFormAmount">£50</span>
+      </button>
+      <div class="small">Donation processed by Enthuse · 100% to Alzheimer's Society UK + UKTTBS</div>
+    </form>
   </div>
 </div>
 
@@ -2570,10 +2751,244 @@ function setupSponsorModal() {
   });
 
   continueB.addEventListener('click', () => {
-    // TODO: hand off to GiveWheel / Stripe with currentPixel + currentAmount + currentTier
-    alert(`Sponsoring mile ${currentPixel} (${currentTier}) for £${currentAmount}.\n\nWire this up to your donation provider.`);
+    // Step 1 → step 2: close the price modal, open the details form
+    // pre-loaded with the chosen mile + tier + amount. The form does
+    // the actual hand-off to Enthuse via /api/claim.
     close();
+    openSponsorForm({
+      pixel:  currentPixel,
+      tier:   currentTier,
+      amount: currentAmount,
+    });
   });
+}
+
+/* ================================================================
+   SPONSOR FORM — step 2 of the donation flow.
+   Captures donor type / name / message / optional logo, calls
+   /api/claim to reserve the pixel, then redirects the donor to
+   Enthuse with the claim_id baked into the URL. The Enthuse
+   webhook (/api/enthuse-webhook) flips the pixel to confirmed
+   when the donation completes.
+   ================================================================ */
+const SPONSOR_API = {
+  // Same-origin in production. Override for local wrangler dev if needed.
+  claim: '/api/claim',
+  list:  '/api/sponsorships',
+};
+const CLOUDINARY = {
+  // Set these via search/replace before going live, or via a build-time
+  // template if you prefer. Unsigned upload preset only — no secrets here.
+  cloudName:    'YOUR_CLOUDINARY_CLOUD',
+  uploadPreset: 'teatrade_run_logos',
+};
+
+let openSponsorForm = () => {};
+
+function setupSponsorForm() {
+  const modal       = document.getElementById('sponsorFormModal');
+  if (!modal) return;
+  const closeBtn    = document.getElementById('sponsorFormClose');
+  const eyebrow     = document.getElementById('sponsorFormEyebrow');
+  const titleEl     = document.getElementById('sponsorFormTitle');
+  const form        = document.getElementById('sponsorForm');
+  const nameLabel   = document.getElementById('sponsorNameLabel');
+  const nameInput   = document.getElementById('sponsorNameInput');
+  const msgInput    = document.getElementById('sponsorMessageInput');
+  const emailInput  = document.getElementById('sponsorEmailInput');
+  const logoField   = document.getElementById('sponsorLogoField');
+  const logoBtn     = document.getElementById('sponsorLogoBtn');
+  const logoStatus  = document.getElementById('sponsorLogoStatus');
+  const logoUrlEl   = document.getElementById('sponsorLogoUrl');
+  const errorEl     = document.getElementById('sponsorFormError');
+  const submitBtn   = document.getElementById('sponsorFormSubmit');
+  const amountEl    = document.getElementById('sponsorFormAmount');
+
+  let ctx = { pixel: 1, tier: 'standard', amount: 50 };
+
+  openSponsorForm = function (next) {
+    ctx = next;
+    // Re-style the form modal to match the chosen tier.
+    modal.classList.toggle('is-premium',  ctx.tier === 'premium');
+    modal.classList.toggle('is-featured', ctx.tier === 'featured');
+    eyebrow.textContent = ctx.tier === 'premium'
+      ? `Mile ${ctx.pixel} of 190 · Start & Finish`
+      : ctx.tier === 'featured'
+        ? `Mile ${ctx.pixel} of 190 · Premium`
+        : `Mile ${ctx.pixel} of 190`;
+    titleEl.innerHTML = 'Tell us how to <strong>credit</strong> your mile.';
+    amountEl.textContent = '£' + ctx.amount;
+
+    // Reset state.
+    form.reset();
+    errorEl.hidden = true;
+    logoUrlEl.value = '';
+    logoStatus.textContent = 'No file selected';
+    refreshNameLabel();
+    refreshLogoVisibility();
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = `Continue to Enthuse · <span>£${ctx.amount}</span>`;
+
+    modal.classList.add('is-open');
+    setTimeout(() => nameInput.focus(), 60);
+  };
+
+  function close() { modal.classList.remove('is-open'); }
+  closeBtn.addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('is-open')) close();
+  });
+
+  // Donor-type radio toggles whether the logo upload + business-name
+  // copy are shown.
+  form.querySelectorAll('input[name="donor_type"]').forEach(r =>
+    r.addEventListener('change', () => {
+      refreshNameLabel();
+      refreshLogoVisibility();
+    }));
+
+  function donorType() {
+    return form.querySelector('input[name="donor_type"]:checked')?.value || 'individual';
+  }
+  function refreshNameLabel() {
+    const t = donorType();
+    nameLabel.textContent = t === 'corporate' ? 'Company name' : 'Your name';
+    nameInput.placeholder  = t === 'corporate' ? 'e.g. Welsh Tea Co.' : 'e.g. Jane Smith';
+  }
+  function refreshLogoVisibility() {
+    logoField.hidden = donorType() !== 'corporate';
+    if (logoField.hidden) {
+      logoUrlEl.value = '';
+      logoStatus.textContent = 'No file selected';
+    }
+  }
+
+  // Cloudinary unsigned upload widget — opens an overlay for the file
+  // pick + crop, returns a hosted URL we drop into the form.
+  let widget;
+  logoBtn.addEventListener('click', () => {
+    if (typeof window.cloudinary === 'undefined') {
+      logoStatus.textContent = 'Upload widget still loading — try again in a moment.';
+      return;
+    }
+    if (!widget) {
+      widget = window.cloudinary.createUploadWidget({
+        cloudName:    CLOUDINARY.cloudName,
+        uploadPreset: CLOUDINARY.uploadPreset,
+        sources:      ['local', 'url'],
+        multiple:     false,
+        cropping:     true,
+        croppingAspectRatio: 1,
+        clientAllowedFormats: ['png', 'jpg', 'jpeg', 'svg', 'webp'],
+        maxFileSize:  2 * 1024 * 1024,
+      }, (err, result) => {
+        if (err) { logoStatus.textContent = 'Upload failed — try again.'; return; }
+        if (result?.event === 'success') {
+          logoUrlEl.value = result.info.secure_url;
+          logoStatus.textContent = '✓ Logo uploaded';
+        }
+      });
+    }
+    widget.open();
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorEl.hidden = true;
+
+    const fd = new FormData(form);
+    const payload = {
+      pixel:         ctx.pixel,
+      tier:          ctx.tier,
+      amount:        ctx.amount,
+      donor_type:    fd.get('donor_type'),
+      sponsor_name:  (fd.get('sponsor_name') || '').toString().trim(),
+      message:       (fd.get('message') || '').toString().trim(),
+      logo_url:      (fd.get('logo_url') || '').toString() || null,
+      contact_email: (fd.get('contact_email') || '').toString().trim(),
+    };
+    if (!payload.sponsor_name) return showError('Please enter a name.');
+    if (!payload.contact_email || !/^\S+@\S+\.\S+$/.test(payload.contact_email)) {
+      return showError('Please enter a valid email so we can confirm your donation.');
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = 'Reserving your mile…';
+
+    try {
+      const r = await fetch(SPONSOR_API.claim, {
+        method:  'POST',
+        headers: { 'content-type': 'application/json' },
+        body:    JSON.stringify(payload),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data.enthuse_url) {
+        const msg = ({
+          already_claimed: 'This mile has just been sponsored — please pick another.',
+          pending:         'Someone else is currently sponsoring this mile — try again in a few minutes.',
+          bad_amount:      'Amount mismatch. Please refresh and try again.',
+        })[data.error] || 'Something went wrong reserving your mile. Please try again.';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `Continue to Enthuse · <span>£${ctx.amount}</span>`;
+        return showError(msg);
+      }
+      // Hand the donor over to Enthuse. When they complete the donation
+      // the webhook flips the pending row to confirmed and the pixel
+      // re-renders next time the front-end polls /api/sponsorships.
+      window.location.href = data.enthuse_url;
+    } catch (err) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `Continue to Enthuse · <span>£${ctx.amount}</span>`;
+      showError('Network error — please check your connection and try again.');
+    }
+  });
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.hidden = false;
+  }
+}
+
+/* ================================================================
+   LIVE DATA SYNC — pull confirmed sponsorships + total raised from
+   the API every 30s (and on focus). Updates CONFIG in place and
+   re-renders the map pixels + miles grid + raised orb so a donation
+   appears within seconds of completing on Enthuse.
+   ================================================================ */
+async function refreshSponsorships() {
+  try {
+    const r = await fetch(SPONSOR_API.list + '?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return;
+    const data = await r.json();
+    if (Array.isArray(data.sponsorships)) {
+      CONFIG.sponsoredPixels = data.sponsorships;
+    }
+    if (Number.isFinite(data.raised_total)) {
+      CONFIG.raisedTotal = data.raised_total;
+    }
+    if (Number.isFinite(data.raised_goal)) {
+      CONFIG.raisedGoal = data.raised_goal;
+    }
+    rerenderSponsorViews();
+  } catch (_) { /* offline — keep last-known values */ }
+}
+
+function rerenderSponsorViews() {
+  // Wipe + rebuild the Leaflet pixels.
+  if (Array.isArray(pixelMarkers) && leafletMap) {
+    pixelMarkers.forEach(m => leafletMap.removeLayer(m));
+    pixelMarkers.length = 0;
+    if (typeof buildPixels === 'function') buildPixels();
+  }
+  // Wipe + rebuild the in-panel miles grid.
+  const grid = document.getElementById('milesGrid');
+  if (grid && typeof buildMilesGrid === 'function') {
+    grid.innerHTML = '';
+    buildMilesGrid();
+  }
+  // Refresh the £ raised orb.
+  if (typeof animateRaised === 'function') animateRaised();
 }
 
 /* ================================================================
@@ -2764,18 +3179,30 @@ document.addEventListener('DOMContentLoaded', () => {
   buildMilesGrid();
   setupMilePanel();
   setupSponsorModal();
+  setupSponsorForm();
   setupCaffeineBoost();
   setupRaisedOrb();
   setupCharityModal();
   setupStravaModal();
 
-  // Donate button — placeholder hand-off to the donation provider
-  // (GiveWheel / Stripe). Lets visitors give any amount without
-  // committing to a full mile.
+  // Pull live sponsorships + total raised from the API on first paint
+  // and then poll every 30s. Also refresh whenever the tab regains
+  // focus, so a donor returning from Enthuse sees their pixel update.
+  refreshSponsorships();
+  setInterval(refreshSponsorships, 30_000);
+  window.addEventListener('focus', refreshSponsorships);
+
+  // "Donate" pill on the map: opens the Enthuse campaign page in a
+  // new tab so the donor can give any amount without claiming a mile.
   const donateBtn = document.getElementById('donateBtn');
   if (donateBtn) {
     donateBtn.addEventListener('click', () => {
-      alert('Donate any amount — wire this up to your GiveWheel link.');
+      // ENTHUSE_CAMPAIGN_URL is read server-side by /api/claim. For the
+      // simple "Donate any amount" link we hardcode the same URL — set
+      // it once via search/replace before going live.
+      const url = window.TEATRADE_ENTHUSE_URL ||
+                  'https://enthuse.com/p/your-campaign-slug';
+      window.open(url, '_blank', 'noopener');
     });
   }
 });
