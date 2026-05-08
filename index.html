@@ -352,7 +352,42 @@ button { font-family: inherit; }
 /* Keep Leaflet controls below modals */
 .leaflet-top, .leaflet-bottom { z-index: 800 !important; }
 /* Nudge zoom controls down so they don't crowd the route pill */
-.leaflet-top.leaflet-left { padding-top: calc(var(--header-h) + 116px); }
+.leaflet-top.leaflet-left { padding-top: calc(var(--header-h) + 116px); padding-left: 20px; }
+
+/* --- Stylised zoom buttons (match pill / legend treatment above) -- */
+.leaflet-control-zoom.leaflet-bar {
+  border: none;
+  box-shadow: var(--shadow);
+  border-radius: 999px;
+  background: var(--panel);
+  overflow: hidden;
+  display: inline-flex;
+  flex-direction: column;
+  padding: 4px;
+  gap: 4px;
+}
+.leaflet-control-zoom.leaflet-bar a,
+.leaflet-control-zoom.leaflet-bar a:hover {
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 400;
+  transition: background .12s ease, color .12s ease;
+}
+.leaflet-control-zoom.leaflet-bar a:hover {
+  background: rgba(0,0,0,0.05);
+  color: var(--accent-orange);
+}
+.leaflet-control-zoom.leaflet-bar a.leaflet-disabled {
+  color: var(--muted);
+  background: transparent;
+  opacity: 0.45;
+}
 
 /* --- Map overlays ------------------------------------------------ */
 .map-overlay {
