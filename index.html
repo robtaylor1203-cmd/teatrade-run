@@ -1376,9 +1376,14 @@ button { font-family: inherit; }
 .sponsor-modal.is-premium .btn-primary {
   background: var(--gold-deep);
   box-shadow: 0 4px 14px rgba(168,134,80,0.35);
+  animation: pulse-gold 2.4s infinite;
 }
 .sponsor-modal.is-premium .btn-primary:hover {
   background: #8c6e3f;
+}
+@keyframes pulse-gold {
+  0%,100% { box-shadow: 0 4px 14px rgba(168,134,80,.35); }
+  50%     { box-shadow: 0 4px 22px rgba(168,134,80,.65); }
 }
 
 /* Premium variant of the hover card (gold start / finish slots). */
@@ -1397,9 +1402,14 @@ button { font-family: inherit; }
 .sponsor-modal.is-featured .btn-primary {
   background: var(--accent);
   box-shadow: 0 4px 14px rgba(26,115,232,0.35);
+  animation: pulse-blue 2.4s infinite;
 }
 .sponsor-modal.is-featured .btn-primary:hover {
   background: #155cb0;
+}
+@keyframes pulse-blue {
+  0%,100% { box-shadow: 0 4px 14px rgba(26,115,232,.35); }
+  50%     { box-shadow: 0 4px 22px rgba(26,115,232,.65); }
 }
 
 /* Featured variant of the hover card. */
@@ -1819,7 +1829,7 @@ button { font-family: inherit; }
     <button class="btn btn-primary" id="sponsorContinueBtn">
       Continue · <span id="sponsorContinueAmt">£10</span>
     </button>
-    <div class="small">Secure checkout via JustGiving · 100% to charity</div>
+    <div class="small">Secure checkout via GiveWheel · 100% to charity</div>
   </div>
 </div>
 
@@ -1941,7 +1951,7 @@ const CONFIG = {
 
   /* Sponsored pixels. Index here = pixel number (1..pixelCount).
      Once a real donation flow is wired in, build this array from
-     your backend / JustGiving / Stripe. */
+     your backend / GiveWheel / Stripe. */
   sponsoredPixels: [
     { pixel: 14,  sponsor: "Welsh Tea Co.",        initials: "WT", logoBg: "#c8102e", amount: 50,   tier: "standard",  message: "Cymru am byth! Keep going." },
     { pixel: 27,  sponsor: "Severn Crossings Ltd", initials: "SC", logoBg: "#1a73e8", amount: 25,   tier: "standard",  message: "Goodbye Wales, hello England." },
@@ -2560,7 +2570,7 @@ function setupSponsorModal() {
   });
 
   continueB.addEventListener('click', () => {
-    // TODO: hand off to JustGiving / Stripe with currentPixel + currentAmount + currentTier
+    // TODO: hand off to GiveWheel / Stripe with currentPixel + currentAmount + currentTier
     alert(`Sponsoring mile ${currentPixel} (${currentTier}) for £${currentAmount}.\n\nWire this up to your donation provider.`);
     close();
   });
@@ -2760,12 +2770,12 @@ document.addEventListener('DOMContentLoaded', () => {
   setupStravaModal();
 
   // Donate button — placeholder hand-off to the donation provider
-  // (JustGiving / Stripe). Lets visitors give any amount without
+  // (GiveWheel / Stripe). Lets visitors give any amount without
   // committing to a full mile.
   const donateBtn = document.getElementById('donateBtn');
   if (donateBtn) {
     donateBtn.addEventListener('click', () => {
-      alert('Donate any amount — wire this up to your JustGiving / Stripe link.');
+      alert('Donate any amount — wire this up to your GiveWheel link.');
     });
   }
 });
