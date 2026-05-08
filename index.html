@@ -331,7 +331,7 @@ button { font-family: inherit; }
 /* Keep Leaflet controls below modals */
 .leaflet-top, .leaflet-bottom { z-index: 800 !important; }
 /* Nudge zoom controls down so they don't crowd the route pill */
-.leaflet-top.leaflet-left { padding-top: calc(var(--header-h) + 76px); }
+.leaflet-top.leaflet-left { padding-top: calc(var(--header-h) + 116px); }
 
 /* --- Map overlays ------------------------------------------------ */
 .map-overlay {
@@ -355,6 +355,41 @@ button { font-family: inherit; }
   gap: 14px;
   box-shadow: var(--shadow);
   font-size: 0.88rem;
+}
+
+/* Top-left: dot-color legend, sits just below the route pill. */
+.map-legend {
+  top: calc(var(--header-h) + 70px);
+  left: 20px;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  padding: 8px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  box-shadow: var(--shadow);
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.map-legend > span { display: inline-flex; align-items: center; }
+.map-legend__dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.map-legend__dot--available {
+  background: rgba(0,0,0,0.08);
+  border: 1px solid var(--hairline);
+}
+.map-legend__dot--sponsored { background: var(--accent-orange); }
+.map-legend__dot--corporate { background: var(--text); }
+.map-legend__dot--premium   { background: var(--accent); }
+@media (max-width: 720px) {
+  .map-legend { font-size: 0.72rem; padding: 6px 12px; gap: 10px; }
 }
 .route-pill .dotO,
 .route-pill .dotB {
@@ -1465,6 +1500,15 @@ button { font-family: inherit; }
       <span><strong>Cutty Sark</strong> <span class="dotB"></span></span>
       <span class="arrow">·</span>
       <span><strong>190 mi</strong></span>
+    </div>
+
+    <!-- Top-left, under route pill: dot-color legend (mirrors the
+         Sponsor-a-Mile panel legend so visitors can decode the map). -->
+    <div class="map-overlay map-legend" aria-label="Map legend">
+      <span><span class="map-legend__dot map-legend__dot--available"></span>Available</span>
+      <span><span class="map-legend__dot map-legend__dot--sponsored"></span>Sponsored</span>
+      <span><span class="map-legend__dot map-legend__dot--corporate"></span>Corporate</span>
+      <span><span class="map-legend__dot map-legend__dot--premium"></span>Premium</span>
     </div>
 
     <!-- Top-right: primary actions -->
