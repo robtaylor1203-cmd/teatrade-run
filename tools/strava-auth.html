@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Strava Auth Helper · TeaTrade Run</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font: 15px/1.5 -apple-system, system-ui, sans-serif;
+    color: #202124;
+    background: #f5f5f7;
+    max-width: 640px;
+    margin: 40px auto;
+    padding: 24px;
+  }
+  h1   { font-weight: 500; margin: 0 0 8px; }
+  h2   { font-weight: 500; font-size: 1.05rem; margin: 24px 0 8px; }
+  code { background: #fff; padding: 2px 6px; border-radius: 4px; border: 1px solid #ddd; }
+  pre  { background: #fff; padding: 12px; border-radius: 8px; border: 1px solid #ddd; overflow-x: auto; }
+  label { display: block; margin: 12px 0 4px; font-size: 0.9rem; color: #555; }
+  input[type=text] {
+    width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px;
+    font: inherit;
+  }
+  button {
+    margin-top: 12px;
+    padding: 10px 18px;
+    border: 0; border-radius: 8px;
+    background: #fc4c02; color: #fff; font: inherit; font-weight: 500;
+    cursor: pointer;
+  }
+  button:hover { background: #e34401; }
+  .ok { color: #137333; font-weight: 500; }
+  .err { color: #c5221f; font-weight: 500; }
+  .small { color: #666; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Strava → refresh token helper</h1>
+<p class="small">One-time use. Get your Strava refresh token, then paste it into Cloudflare Pages env vars.</p>
+
+<h2>Step 1 — Create a Strava API app</h2>
+<p>Go to <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener">strava.com/settings/api</a> and create an app:</p>
+<ul>
+  <li><b>Application Name</b>: TeaTrade Run</li>
+  <li><b>Category</b>: Visualizer</li>
+  <li><b>Website</b>: https://run.teatrade.co.uk</li>
+  <li><b>Authorization Callback Domain</b>: <code>localhost</code> (just for this helper — change later if you want)</li>
+</ul>
+<p>You'll get a <b>Client ID</b> (a number) and <b>Client Secret</b> (long string).</p>
+
+<h2>Step 2 — Authorize this helper to read your runs</h2>
+<label>Client ID</label>
+<input type="text" id="clientId" placeholder="e.g. 123456" autocomplete="off">
+<label>Client Secret</label>
+<input type="text" id="clientSecret" placeholder="paste from Strava settings" autocomplete="off">
+<button id="goAuth">Open Strava login</button>
+<p class="small">This opens Strava in a new tab. After you click "Authorize" you'll be redirected back to <code>localhost</code> with a <code>code=...</code> in the URL — copy that whole URL into the field below.</p>
+
+<h2>Step 3 — Paste the redirect URL Strava sent you back to</h2>
+<label>Full URL after authorization</label>
+<input type="text" id="redirectUrl" placeholder="http://localhost/?state=&code=abc123&scope=read,activity:read_all">
+<button id="goExchange">Exchange code for refresh token</button>
+
+<h2>Result</h2>
+<div id="result"><span class="small">Awaiting steps above…</span></div>
+
+<h2>Step 4 — Add to Cloudflare Pages</h2>
+<p>In your Pages project → <b>Settings → Environment variables</b>, set these (Production):</p>
+<pre>STRAVA_CLIENT_ID       = (the Client ID number)
+STRAVA_CLIENT_SECRET   = (the Client Secret)
+STRAVA_REFRESH_TOKEN   = (the refresh_token from above)
+STRAVA_ATHLETE_ID      = (the athlete_id from above — used for the profile link)
+STRAVA_SINCE           = 2026-01-01   (or whatever date you want to start counting from)</pre>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+$('goAuth').addEventListener('click', () => {
+  const cid = $('clientId').value.trim();
+  if (!cid) return alert('Enter the Client ID first.');
+  // Run this helper from the file system or a local server. The
+  // redirect target just needs to land somewhere we can read the
+  // ?code=... back from. http://localhost works even if nothing's
+  // listening — we only need the URL bar.
+  const redirect = 'http://localhost/';
+  const url =
+    'https://www.strava.com/oauth/authorize' +
+    '?client_id='     + encodeURIComponent(cid) +
+    '&response_type=code' +
+    '&redirect_uri='  + encodeURIComponent(redirect) +
+    '&approval_prompt=force' +
+    '&scope=read,activity:read_all';
+  window.open(url, '_blank', 'noopener');
+});
+
+$('goExchange').addEventListener('click', async () => {
+  const cid    = $('clientId').value.trim();
+  const secret = $('clientSecret').value.trim();
+  const url    = $('redirectUrl').value.trim();
+  const result = $('result');
+  if (!cid || !secret || !url) {
+    result.innerHTML = '<span class="err">Fill in Client ID, Client Secret, and the redirect URL.</span>';
+    return;
+  }
+  let code;
+  try {
+    code = new URL(url).searchParams.get('code');
+  } catch { code = null; }
+  if (!code) {
+    result.innerHTML = '<span class="err">Could not find <code>code=...</code> in that URL.</span>';
+    return;
+  }
+  result.innerHTML = '<span class="small">Exchanging code with Strava…</span>';
+  try {
+    const r = await fetch('https://www.strava.com/oauth/token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        client_id:     cid,
+        client_secret: secret,
+        grant_type:    'authorization_code',
+        code,
+      }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(JSON.stringify(data));
+    result.innerHTML =
+      '<span class="ok">Success — copy these into Cloudflare:</span>' +
+      '<pre>STRAVA_REFRESH_TOKEN = ' + data.refresh_token +
+      '\nSTRAVA_ATHLETE_ID    = ' + (data.athlete && data.athlete.id) + '</pre>' +
+      '<p class="small">Athlete: ' + (data.athlete?.firstname || '') + ' ' + (data.athlete?.lastname || '') + '</p>';
+  } catch (err) {
+    result.innerHTML = '<span class="err">Failed: ' + err.message + '</span>';
+  }
+});
+</script>
+</body>
+</html>
