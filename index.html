@@ -624,20 +624,99 @@ button { font-family: inherit; }
 .mile--claimed { background: var(--accent-orange); color: #fff; font-weight: 500; }
 .mile--claimed.tier-premium  { background: var(--accent); }
 .mile--claimed.tier-corporate{ background: var(--text); }
+/* =============================================================
+   SPONSOR HOVER CARD — shared markup used for both the
+   Leaflet pixel hover and the in-grid mile hover. Wide layout:
+   logo block on the left, details + message on the right.
+   ============================================================= */
+.sponsor-card {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  width: 360px;
+  text-align: left;
+  font-family: 'Roboto', sans-serif;
+}
+.sponsor-card__logo {
+  flex-shrink: 0;
+  width: 96px; height: 96px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--hairline);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 500;
+  font-size: 1.7rem;
+  letter-spacing: 0.04em;
+  overflow: hidden;
+}
+.sponsor-card__logo img { width: 100%; height: 100%; object-fit: contain; }
+.sponsor-card__logo--empty {
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  text-align: center;
+  font-weight: 500;
+  padding: 0 6px;
+}
+.sponsor-card__body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.sponsor-card__eyebrow {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--accent-orange);
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+.sponsor-card__name {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: -0.005em;
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+.sponsor-card__amt {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--accent-orange);
+  margin-bottom: 6px;
+}
+.sponsor-card__msg {
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-style: italic;
+  font-weight: 300;
+  line-height: 1.4;
+  border-left: 2px solid var(--hairline);
+  padding-left: 10px;
+}
+.sponsor-card__cta {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--accent-orange);
+  margin-top: 4px;
+}
+@media (max-width: 480px) {
+  .sponsor-card { width: 280px; }
+  .sponsor-card__logo { width: 72px; height: 72px; font-size: 1.3rem; }
+}
+
+/* In-grid hover tooltip wrapper */
 .mile__tooltip {
   position: absolute;
   bottom: calc(100% + 10px);
   left: 50%;
-  transform: translateX(-50%) scale(0.625);
+  transform: translateX(-50%) scale(0.7);
   transform-origin: bottom center;
-  width: 200px;
   background: var(--panel);
-  color: var(--text);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius);
-  padding: 10px 12px;
-  font-size: 0.8rem;
-  text-align: left;
+  border-radius: var(--radius-lg);
+  padding: 14px;
   box-shadow: var(--shadow-lg);
   opacity: 0;
   pointer-events: none;
@@ -645,9 +724,6 @@ button { font-family: inherit; }
   z-index: 20;
 }
 .mile:hover .mile__tooltip { opacity: 1; }
-.mile__tooltip strong { display: block; color: var(--accent); margin-bottom: 2px; font-weight: 500; }
-.mile__tooltip .amt   { color: var(--accent-orange); font-weight: 500; }
-.mile__tooltip .msg   { color: var(--muted); margin-top: 4px; font-style: italic; font-weight: 300; }
 
 .mile-panel__legend {
   display: flex;
@@ -761,21 +837,16 @@ button { font-family: inherit; }
   text-decoration: none;
 }
 
-/* Tooltip styling (used for pixel hover) */
+/* Leaflet hover tooltip wrapper — same look as the in-grid card */
 .leaflet-tooltip.pixel-tip {
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  padding: 10px 12px;
+  padding: 14px;
   font-family: 'Roboto', sans-serif;
-  font-size: 0.82rem;
-  font-weight: 400;
 }
-.leaflet-tooltip.pixel-tip strong { color: var(--accent); font-weight: 500; }
-.leaflet-tooltip.pixel-tip .amt   { color: var(--accent-orange); font-weight: 500; }
-.leaflet-tooltip.pixel-tip .msg   { color: var(--muted); font-style: italic; font-weight: 300; display: block; margin-top: 2px; }
 .leaflet-tooltip.pixel-tip::before { display: none; } /* hide arrow for cleanness */
 
 /* =============================================================
@@ -1377,8 +1448,8 @@ button { font-family: inherit; }
         <div class="mile-stats">
           <div class="mile-stat"><div class="num orange" id="statClaimed">0</div><div class="lbl">Claimed</div></div>
           <div class="mile-stat"><div class="num" id="statRemaining">190</div><div class="lbl">Remaining</div></div>
-          <div class="mile-stat"><div class="num">£10</div><div class="lbl">Per pixel</div></div>
-          <div class="mile-stat"><div class="num">£50</div><div class="lbl">Whole mile</div></div>
+          <div class="mile-stat"><div class="num">£10</div><div class="lbl">Name only</div></div>
+          <div class="mile-stat"><div class="num">£50</div><div class="lbl">With logo</div></div>
         </div>
         <button class="mile-panel__close" id="milePanelClose" aria-label="Close">×</button>
       </div>
@@ -1437,20 +1508,20 @@ button { font-family: inherit; }
 <div class="sponsor-modal" id="sponsorModal" role="dialog" aria-modal="true" aria-labelledby="sponsorTitle">
   <div class="sponsor-glass">
     <button class="sponsor-glass__close" id="sponsorClose" aria-label="Close">×</button>
-    <div class="eyebrow" id="sponsorEyebrow">Pixel 1</div>
-    <h3 id="sponsorTitle">Sponsor a <strong>pixel</strong>.</h3>
+    <div class="eyebrow" id="sponsorEyebrow">Mile 1</div>
+    <h3 id="sponsorTitle">Sponsor a <strong>mile</strong>.</h3>
     <p class="lede">Pop your name, message, or company logo onto the route. Every pound directly funds the run and the two charities.</p>
 
     <div class="sponsor-options" role="radiogroup" aria-label="Sponsorship amount">
-      <button class="sponsor-opt is-selected" data-amount="10" data-scope="pixel" role="radio" aria-checked="true">
+      <button class="sponsor-opt is-selected" data-amount="10" data-scope="name" role="radio" aria-checked="true">
         <div class="price">£10</div>
-        <div class="scope">A pixel</div>
-        <div class="desc">A small slice of the road. Perfect for a personal shout-out.</div>
+        <div class="scope">Name only</div>
+        <div class="desc">Add your name and a short message to this mile.</div>
       </button>
-      <button class="sponsor-opt" data-amount="50" data-scope="mile" role="radio" aria-checked="false">
+      <button class="sponsor-opt" data-amount="50" data-scope="logo" role="radio" aria-checked="false">
         <div class="price">£50</div>
-        <div class="scope">A whole mile</div>
-        <div class="desc">Sponsor the runner for a full mile. Logo, name and message displayed.</div>
+        <div class="scope">Logo · featured</div>
+        <div class="desc">Display your full logo and message on this mile.</div>
       </button>
     </div>
 
@@ -1523,19 +1594,19 @@ const CONFIG = {
      Once a real donation flow is wired in, build this array from
      your backend / JustGiving / Stripe. */
   sponsoredPixels: [
-    { pixel: 1,   sponsor: "Peterston Tea Estate", amount: 500,  tier: "premium",   message: "Where it all begins. Run strong!" },
-    { pixel: 14,  sponsor: "Welsh Tea Co.",        amount: 50,   tier: "standard",  message: "Cymru am byth! Keep going." },
-    { pixel: 27,  sponsor: "Severn Crossings Ltd", amount: 25,   tier: "standard",  message: "Goodbye Wales, hello England." },
-    { pixel: 50,  sponsor: "Bristol Brew Bar",     amount: 50,   tier: "standard",  message: "Halfway to halfway — easy!" },
-    { pixel: 64,  sponsor: "Bath Tea Rooms",       amount: 30,   tier: "standard",  message: "Roman roads still hurt." },
-    { pixel: 75,  sponsor: "Acme Tea Importers",   amount: 250,  tier: "corporate", message: "Proud sponsors of one tired runner." },
-    { pixel: 96,  sponsor: "The Tasting Room",     amount: 100,  tier: "standard",  message: "Halfway hero!" },
-    { pixel: 120, sponsor: "Berkshire Brews",      amount: 40,   tier: "standard",  message: "One foot, then the other." },
-    { pixel: 138, sponsor: "Reading Roasters",     amount: 50,   tier: "standard",  message: "Nearly there — kettle is on." },
-    { pixel: 155, sponsor: "Henley Hounds RC",     amount: 35,   tier: "standard",  message: "From the river crew." },
-    { pixel: 170, sponsor: "Thames Tea Co.",       amount: 250,  tier: "corporate", message: "Just follow the river home." },
-    { pixel: 185, sponsor: "Greenwich Gazette",    amount: 75,   tier: "standard",  message: "Final push! See you at the Sark." },
-    { pixel: 190, sponsor: "Cutty Sark Trust",     amount: 500,  tier: "premium",   message: "Welcome home, sailor!" },
+    { pixel: 1,   sponsor: "Peterston Tea Estate", initials: "PT", logoBg: "#0e7c4a", amount: 500,  tier: "premium",   message: "Where it all begins. Run strong!" },
+    { pixel: 14,  sponsor: "Welsh Tea Co.",        initials: "WT", logoBg: "#c8102e", amount: 50,   tier: "standard",  message: "Cymru am byth! Keep going." },
+    { pixel: 27,  sponsor: "Severn Crossings Ltd", initials: "SC", logoBg: "#1a73e8", amount: 25,   tier: "standard",  message: "Goodbye Wales, hello England." },
+    { pixel: 50,  sponsor: "Bristol Brew Bar",     initials: "BB", logoBg: "#6a4c2a", amount: 50,   tier: "standard",  message: "Halfway to halfway — easy!" },
+    { pixel: 64,  sponsor: "Bath Tea Rooms",       initials: "BT", logoBg: "#b87333", amount: 30,   tier: "standard",  message: "Roman roads still hurt." },
+    { pixel: 75,  sponsor: "Acme Tea Importers",   initials: "AT", logoBg: "#202124", amount: 250,  tier: "corporate", message: "Proud sponsors of one tired runner." },
+    { pixel: 96,  sponsor: "The Tasting Room",     initials: "TR", logoBg: "#5f6368", amount: 100,  tier: "standard",  message: "Halfway hero!" },
+    { pixel: 120, sponsor: "Berkshire Brews",      initials: "BB", logoBg: "#0b6e4f", amount: 40,   tier: "standard",  message: "One foot, then the other." },
+    { pixel: 138, sponsor: "Reading Roasters",     initials: "RR", logoBg: "#7a2e2e", amount: 50,   tier: "standard",  message: "Nearly there — kettle is on." },
+    { pixel: 155, sponsor: "Henley Hounds RC",     initials: "HH", logoBg: "#1a73e8", amount: 35,   tier: "standard",  message: "From the river crew." },
+    { pixel: 170, sponsor: "Thames Tea Co.",       initials: "TT", logoBg: "#202124", amount: 250,  tier: "corporate", message: "Just follow the river home." },
+    { pixel: 185, sponsor: "Greenwich Gazette",    initials: "GG", logoBg: "#3a5a40", amount: 75,   tier: "standard",  message: "Final push! See you at the Sark." },
+    { pixel: 190, sponsor: "Cutty Sark Trust",     initials: "CS", logoBg: "#0a3d62", amount: 500,  tier: "premium",   message: "Welcome home, sailor!" },
   ],
 };
 
@@ -1716,6 +1787,34 @@ function pointAlongRoute(t) {
   return routeLatLngs[routeLatLngs.length - 1];
 }
 
+/* Build the markup for the wide hover card.
+   Used by both the Leaflet pixel tooltip and the in-grid mile tooltip. */
+function sponsorCardHTML(mileNum, sponsor) {
+  const logoBlock = sponsor
+    ? `<div class="sponsor-card__logo" style="background:${sponsor.logoBg || '#5f6368'};">${
+         sponsor.logo
+           ? `<img src="${sponsor.logo}" alt="${sponsor.sponsor} logo">`
+           : (sponsor.initials || sponsor.sponsor.slice(0, 2).toUpperCase())
+       }</div>`
+    : `<div class="sponsor-card__logo sponsor-card__logo--empty">Your<br>logo<br>here</div>`;
+
+  const body = sponsor
+    ? `
+        <div class="sponsor-card__eyebrow">Mile ${mileNum} · Sponsored</div>
+        <div class="sponsor-card__name">${sponsor.sponsor}</div>
+        <div class="sponsor-card__amt">£${sponsor.amount.toLocaleString('en-GB')}</div>
+        <div class="sponsor-card__msg">“${sponsor.message}”</div>
+      `
+    : `
+        <div class="sponsor-card__eyebrow">Mile ${mileNum} · Available</div>
+        <div class="sponsor-card__name">Sponsor this mile</div>
+        <div class="sponsor-card__amt">From £${CONFIG.pixelPrice}</div>
+        <div class="sponsor-card__cta">Click to add your name, message or logo →</div>
+      `;
+
+  return `<div class="sponsor-card">${logoBlock}<div class="sponsor-card__body">${body}</div></div>`;
+}
+
 /* Build the pixelated, sponsorable route blocks.
    Each pixel sits at a fractional position along the route
    and exposes a hover tooltip + click-to-sponsor flow. */
@@ -1745,22 +1844,7 @@ function buildPixels() {
     const marker = L.marker(ll, { icon, riseOnHover: true }).addTo(leafletMap);
     pixelMarkers.push(marker);
 
-    // Hover tooltip with rich sponsor info (if any)
-    let tipHtml;
-    if (sponsor) {
-      tipHtml = `
-        <strong>Pixel ${i} · ${sponsor.sponsor}</strong><br>
-        <span class="amt">£${sponsor.amount.toLocaleString('en-GB')}</span>
-        <span class="msg">"${sponsor.message}"</span>
-      `;
-    } else {
-      tipHtml = `
-        <strong>Pixel ${i} — available</strong><br>
-        <span class="amt">£${CONFIG.pixelPrice} to sponsor this pixel</span>
-        <span class="msg">Click to add your name or logo.</span>
-      `;
-    }
-    marker.bindTooltip(tipHtml, {
+    marker.bindTooltip(sponsorCardHTML(i, sponsor), {
       className: 'pixel-tip',
       direction: 'top',
       offset: [0, -6],
@@ -1768,11 +1852,8 @@ function buildPixels() {
       sticky: false,
     });
 
-    // Click an unsponsored pixel -> open the glassmorphism sponsor modal.
-    marker.on('click', () => {
-      if (sponsor) return; // claimed: no click action
-      openSponsorModal(i);
-    });
+    // Click any mile (sponsored or not) -> open the sponsor modal.
+    marker.on('click', () => openSponsorModal(i));
   }
 }
 
@@ -1912,19 +1993,20 @@ function buildMilesGrid() {
       if (s.tier === 'premium')   block.classList.add('tier-premium');
       if (s.tier === 'corporate') block.classList.add('tier-corporate');
       block.setAttribute('aria-label',
-        `Pixel ${i} — sponsored by ${s.sponsor}, £${s.amount}`);
-      const tip = document.createElement('div');
-      tip.className = 'mile__tooltip';
-      tip.innerHTML = `
-        <strong>Pixel ${i} · ${s.sponsor}</strong>
-        <span class="amt">£${s.amount.toLocaleString('en-GB')}</span>
-        <div class="msg">"${s.message}"</div>`;
-      block.appendChild(tip);
+        `Mile ${i} — sponsored by ${s.sponsor}, £${s.amount}`);
     } else {
-      block.title = `Pixel ${i} — click to sponsor (£${CONFIG.pixelPrice})`;
-      block.setAttribute('aria-label', `Pixel ${i} — available to sponsor`);
-      block.addEventListener('click', () => openSponsorModal(i));
+      block.setAttribute('aria-label', `Mile ${i} — available to sponsor`);
     }
+
+    // Wide hover card (logo + sponsor details + message). Same markup
+    // as the Leaflet pixel tooltip so the two views stay in sync.
+    const tip = document.createElement('div');
+    tip.className = 'mile__tooltip';
+    tip.innerHTML = sponsorCardHTML(i, s);
+    block.appendChild(tip);
+
+    // Every mile is clickable — sponsored or not — opens the same modal.
+    block.addEventListener('click', () => openSponsorModal(i));
     grid.appendChild(block);
   }
   document.getElementById('statClaimed').textContent = claimed;
@@ -2059,16 +2141,16 @@ function setupSponsorModal() {
     currentAmount = parseInt(opt.dataset.amount, 10);
     currentScope  = opt.dataset.scope;
     contAmt.textContent = '£' + currentAmount;
-    title.innerHTML = currentScope === 'mile'
-      ? 'Sponsor a <strong>whole mile</strong>.'
-      : 'Sponsor a <strong>pixel</strong>.';
+    title.innerHTML = currentScope === 'logo'
+      ? 'Sponsor a <strong>mile</strong> with your logo.'
+      : 'Sponsor a <strong>mile</strong>.';
   }
   opts.forEach(opt => opt.addEventListener('click', () => selectOpt(opt)));
 
   openSponsorModal = function (pixelNum) {
     currentPixel = pixelNum;
-    eyebrow.textContent = `Pixel ${pixelNum} · Mile ${pixelNum}`;
-    selectOpt(modal.querySelector('.sponsor-opt[data-scope="pixel"]'));
+    eyebrow.textContent = `Mile ${pixelNum} of 190`;
+    selectOpt(modal.querySelector('.sponsor-opt[data-scope="name"]'));
     modal.classList.add('is-open');
   };
 
@@ -2081,7 +2163,7 @@ function setupSponsorModal() {
 
   continueB.addEventListener('click', () => {
     // TODO: hand off to JustGiving / Stripe with currentPixel + currentAmount + currentScope
-    alert(`Sponsoring ${currentScope === 'mile' ? 'mile' : 'pixel'} ${currentPixel} for £${currentAmount}.\n\nWire this up to your donation provider.`);
+    alert(`Sponsoring mile ${currentPixel} (${currentScope === 'logo' ? 'logo tier' : 'name tier'}) for £${currentAmount}.\n\nWire this up to your donation provider.`);
     close();
   });
 }
