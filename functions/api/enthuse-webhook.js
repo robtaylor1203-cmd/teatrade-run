@@ -52,6 +52,29 @@ export async function onRequestPost({ request, env }) {
   if (!claimId) return new Response("missing claim_id", { status: 400 });
 
   const data = await readSponsorships(env);
+
+  // "Donate any amount" claims are prefixed with `g_` and live in
+  // `general_pending`. They credit raised_total + record a public
+  // entry, but do not touch any pixel.
+  if (claimId.startsWith("g_")) {
+    const gIdx = (data.general_pending || []).findIndex(p => p.claim_id === claimId);
+    const gClaim = gIdx >= 0 ? data.general_pending[gIdx] : null;
+    if (gIdx >= 0) data.general_pending.splice(gIdx, 1);
+
+    data.general_donations = data.general_donations || [];
+    data.general_donations.push({
+      sponsor:    gClaim?.sponsor_name || d.donor_name || "Anonymous",
+      donor_type: gClaim?.donor_type || "individual",
+      amount:     Math.round((d.amount || (gClaim?.amount || 0) * 100) / 100),
+      message:    gClaim?.message || d.message || "",
+      enthuse_id: d.id,
+      confirmed_ms: Date.now(),
+    });
+    data.raised_total = (data.raised_total || 0) + Math.round((d.amount || 0) / 100);
+    await writeSponsorships(env, data);
+    return new Response("ok-general", { status: 200 });
+  }
+
   const idx = (data.pending || []).findIndex(p => p.claim_id === claimId);
   if (idx === -1) {
     // Donation arrived without a pending claim — log it, but still

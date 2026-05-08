@@ -1483,6 +1483,50 @@ button { font-family: inherit; }
   padding: 10px 14px;
   font-size: 0.85rem;
 }
+
+/* Donate Any Amount — chip presets + £ prefix input */
+.donate-amount-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.donate-chip {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1.5px solid rgba(0,0,0,0.12);
+  background: #fff;
+  color: var(--ink);
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 0.95rem;
+  padding: 10px 0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.donate-chip:hover { border-color: var(--accent); color: var(--accent); }
+.donate-chip.is-active {
+  border-color: var(--accent);
+  background: rgba(26,115,232,0.08);
+  color: var(--accent);
+  box-shadow: 0 4px 14px rgba(26,115,232,0.18);
+}
+.donate-amount-input {
+  position: relative;
+}
+.donate-amount-input__prefix {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-weight: 500;
+  pointer-events: none;
+}
+.donate-amount-input input {
+  padding-left: 28px !important;
+}
 .sponsor-modal.is-premium  .sponsor-form__radio input:checked ~ .sponsor-form__radio-bg {
   border-color: var(--gold-deep);
   background: rgba(197,165,114,0.12);
@@ -1832,7 +1876,7 @@ button { font-family: inherit; }
     <!-- Top-right: primary actions -->
     <div class="map-overlay action-stack">
       <button class="btn btn-primary" id="claimOpenBtn">Sponsor a Mile</button>
-      <button class="btn btn-blue" id="donateBtn" type="button">Donate</button>
+      <button class="btn btn-blue" id="donateBtn" type="button">Donate Any Amount</button>
       <button class="btn btn-ghost" id="caffeineBtn"><svg><use href="#i-coffee"/></svg> Caffeine Boost</button>
     </div>
 
@@ -2008,6 +2052,81 @@ button { font-family: inherit; }
 
       <button type="submit" class="btn btn-primary" id="sponsorFormSubmit">
         Continue to Enthuse · <span id="sponsorFormAmount">£50</span>
+      </button>
+      <div class="small">Donation processed by Enthuse · 100% to Alzheimer's Society UK + UKTTBS</div>
+    </form>
+  </div>
+</div>
+
+<!-- =====================================================
+     "DONATE ANY AMOUNT" MODAL — same form as sponsor a mile
+     but with a free-text amount field and no pixel claim.
+     ===================================================== -->
+<div class="sponsor-modal" id="donateAnyModal" role="dialog" aria-modal="true" aria-labelledby="donateAnyTitle">
+  <div class="sponsor-glass sponsor-glass--wide">
+    <button class="sponsor-glass__close" id="donateAnyClose" aria-label="Close">×</button>
+    <div class="eyebrow">Every pound counts</div>
+    <h3 id="donateAnyTitle">Donate <strong>any amount</strong>.</h3>
+    <p class="lede">No mile to claim — just a quick gift toward the £19,000 goal. Donation is taken on Enthuse — we never see your card details.</p>
+
+    <form id="donateAnyForm" class="sponsor-form" novalidate>
+      <fieldset class="sponsor-form__type" aria-label="Donating as">
+        <legend>Donating as</legend>
+        <label class="sponsor-form__radio">
+          <input type="radio" name="donor_type" value="individual" checked>
+          <span class="sponsor-form__radio-bg"></span>
+          <span class="sponsor-form__radio-label">
+            <strong>Individual</strong>
+            <span>Your name in our supporters list.</span>
+          </span>
+        </label>
+        <label class="sponsor-form__radio">
+          <input type="radio" name="donor_type" value="corporate">
+          <span class="sponsor-form__radio-bg"></span>
+          <span class="sponsor-form__radio-label">
+            <strong>Business</strong>
+            <span>Company credit in our supporters list.</span>
+          </span>
+        </label>
+      </fieldset>
+
+      <label class="sponsor-form__field">
+        <span class="sponsor-form__label">Amount <span class="sponsor-form__hint">(£)</span></span>
+        <div class="donate-amount-row">
+          <button type="button" class="donate-chip" data-amt="10">£10</button>
+          <button type="button" class="donate-chip" data-amt="25">£25</button>
+          <button type="button" class="donate-chip" data-amt="50">£50</button>
+          <button type="button" class="donate-chip" data-amt="100">£100</button>
+        </div>
+        <div class="donate-amount-input">
+          <span class="donate-amount-input__prefix">£</span>
+          <input type="number" name="amount" id="donateAnyAmount" min="1" max="100000" step="1" required
+                 placeholder="Other amount" inputmode="numeric">
+        </div>
+      </label>
+
+      <label class="sponsor-form__field">
+        <span class="sponsor-form__label" id="donateAnyNameLabel">Your name</span>
+        <input type="text" name="sponsor_name" id="donateAnyName" maxlength="80" required
+               placeholder="e.g. Jane Smith">
+      </label>
+
+      <label class="sponsor-form__field">
+        <span class="sponsor-form__label">Message <span class="sponsor-form__hint">(optional, 200 chars)</span></span>
+        <textarea name="message" id="donateAnyMessage" maxlength="200" rows="2"
+                  placeholder="Cheering you on to Greenwich!"></textarea>
+      </label>
+
+      <label class="sponsor-form__field">
+        <span class="sponsor-form__label">Email <span class="sponsor-form__hint">(so we can chase a missed donation)</span></span>
+        <input type="email" name="contact_email" id="donateAnyEmail" required
+               placeholder="you@example.com">
+      </label>
+
+      <div class="sponsor-form__error" id="donateAnyError" role="alert" hidden></div>
+
+      <button type="submit" class="btn btn-primary" id="donateAnySubmit">
+        Continue to Enthuse · <span id="donateAnyDisplay">£0</span>
       </button>
       <div class="small">Donation processed by Enthuse · 100% to Alzheimer's Society UK + UKTTBS</div>
     </form>
@@ -2775,6 +2894,7 @@ const SPONSOR_API = {
   // Same-origin in production. Override for local wrangler dev if needed.
   claim: '/api/claim',
   list:  '/api/sponsorships',
+  donate:'/api/donate',
 };
 const CLOUDINARY = {
   // Set these via search/replace before going live, or via a build-time
@@ -2948,6 +3068,124 @@ function setupSponsorForm() {
     errorEl.textContent = msg;
     errorEl.hidden = false;
   }
+}
+
+/* ================================================================
+   DONATE ANY AMOUNT — same shape as sponsor form, but no pixel
+   claim, no logo, donor picks the amount. Hits /api/donate which
+   returns an Enthuse URL; webhook credits raised_total on success.
+   ================================================================ */
+function setupDonateAnyModal() {
+  const modal     = document.getElementById('donateAnyModal');
+  if (!modal) return;
+  const closeBtn  = document.getElementById('donateAnyClose');
+  const form      = document.getElementById('donateAnyForm');
+  const nameLabel = document.getElementById('donateAnyNameLabel');
+  const nameInput = document.getElementById('donateAnyName');
+  const amtInput  = document.getElementById('donateAnyAmount');
+  const display   = document.getElementById('donateAnyDisplay');
+  const errorEl   = document.getElementById('donateAnyError');
+  const submitBtn = document.getElementById('donateAnySubmit');
+  const chips     = form.querySelectorAll('.donate-chip');
+
+  function open() {
+    form.reset();
+    chips.forEach(c => c.classList.remove('is-active'));
+    errorEl.hidden = true;
+    display.textContent = '£0';
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = `Continue to Enthuse · <span id="donateAnyDisplay">£0</span>`;
+    refreshNameLabel();
+    modal.classList.add('is-open');
+    setTimeout(() => amtInput.focus(), 60);
+  }
+  function close() { modal.classList.remove('is-open'); }
+  closeBtn.addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('is-open')) close();
+  });
+
+  // Preset amount chips → fill the input.
+  chips.forEach(chip => chip.addEventListener('click', () => {
+    chips.forEach(c => c.classList.remove('is-active'));
+    chip.classList.add('is-active');
+    amtInput.value = chip.dataset.amt;
+    refreshDisplay();
+  }));
+
+  // Typing in the input clears chip selection.
+  amtInput.addEventListener('input', () => {
+    chips.forEach(c => {
+      c.classList.toggle('is-active', String(c.dataset.amt) === amtInput.value);
+    });
+    refreshDisplay();
+  });
+
+  function refreshDisplay() {
+    const v = Math.max(0, Math.floor(Number(amtInput.value) || 0));
+    const el = document.getElementById('donateAnyDisplay');
+    if (el) el.textContent = '£' + v;
+  }
+
+  // Donor-type radio toggles individual/business label copy.
+  form.querySelectorAll('input[name="donor_type"]').forEach(r =>
+    r.addEventListener('change', refreshNameLabel));
+  function donorType() {
+    return form.querySelector('input[name="donor_type"]:checked')?.value || 'individual';
+  }
+  function refreshNameLabel() {
+    const t = donorType();
+    nameLabel.textContent = t === 'corporate' ? 'Company name' : 'Your name';
+    nameInput.placeholder  = t === 'corporate' ? 'e.g. Welsh Tea Co.' : 'e.g. Jane Smith';
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorEl.hidden = true;
+
+    const fd = new FormData(form);
+    const payload = {
+      amount:        Number(fd.get('amount')),
+      donor_type:    fd.get('donor_type'),
+      sponsor_name:  (fd.get('sponsor_name') || '').toString().trim(),
+      message:       (fd.get('message') || '').toString().trim(),
+      contact_email: (fd.get('contact_email') || '').toString().trim(),
+    };
+    if (!payload.amount || payload.amount < 1) return showError('Please enter a donation amount of at least £1.');
+    if (payload.amount > 100000) return showError('For donations over £100,000 please get in touch directly.');
+    if (!payload.sponsor_name) return showError('Please enter a name.');
+    if (!payload.contact_email || !/^\S+@\S+\.\S+$/.test(payload.contact_email)) {
+      return showError('Please enter a valid email so we can confirm your donation.');
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = 'Redirecting to Enthuse…';
+
+    try {
+      const r = await fetch(SPONSOR_API.donate, {
+        method:  'POST',
+        headers: { 'content-type': 'application/json' },
+        body:    JSON.stringify(payload),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data.enthuse_url) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `Continue to Enthuse · <span id="donateAnyDisplay">£${payload.amount}</span>`;
+        return showError('Something went wrong starting your donation. Please try again.');
+      }
+      window.location.href = data.enthuse_url;
+    } catch (_) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `Continue to Enthuse · <span id="donateAnyDisplay">£${payload.amount}</span>`;
+      showError('Network error — please check your connection and try again.');
+    }
+  });
+
+  function showError(msg) { errorEl.textContent = msg; errorEl.hidden = false; }
+
+  // Expose the opener so the page-level Donate button can call it.
+  window.__openDonateAny = open;
 }
 
 /* ================================================================
@@ -3180,6 +3418,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupMilePanel();
   setupSponsorModal();
   setupSponsorForm();
+  setupDonateAnyModal();
   setupCaffeineBoost();
   setupRaisedOrb();
   setupCharityModal();
@@ -3192,17 +3431,15 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(refreshSponsorships, 30_000);
   window.addEventListener('focus', refreshSponsorships);
 
-  // "Donate" pill on the map: opens the Enthuse campaign page in a
-  // new tab so the donor can give any amount without claiming a mile.
+  // "Donate Any Amount" pill on the map: opens the donate-any-amount
+  // form modal. Same shape as the sponsor-a-mile form, but with a
+  // free-text amount field and no pixel claim.
   const donateBtn = document.getElementById('donateBtn');
   if (donateBtn) {
     donateBtn.addEventListener('click', () => {
-      // ENTHUSE_CAMPAIGN_URL is read server-side by /api/claim. For the
-      // simple "Donate any amount" link we hardcode the same URL — set
-      // it once via search/replace before going live.
-      const url = window.TEATRADE_ENTHUSE_URL ||
-                  'https://enthuse.com/p/your-campaign-slug';
-      window.open(url, '_blank', 'noopener');
+      if (typeof window.__openDonateAny === 'function') {
+        window.__openDonateAny();
+      }
     });
   }
 });
