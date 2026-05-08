@@ -1568,6 +1568,8 @@ function animateRaised() {
    ================================================================ */
 let leafletMap     = null;
 let runnerMarker   = null;
+let routePolyline  = null;     // the visible route line (replaced when OSRM route loads)
+let pixelMarkers   = [];       // refs to pixel markers so we can rebuild them
 let routeLatLngs   = [];
 let cumulativeDist = []; // cumulative distance (m) at each waypoint
 let totalDist      = 0;
@@ -1576,13 +1578,7 @@ function setupMap() {
   routeLatLngs = CONFIG.route.map(w => [w.lat, w.lng]);
 
   // Pre-compute cumulative distances for fast point-along-route lookup
-  cumulativeDist = [0];
-  for (let i = 1; i < routeLatLngs.length; i++) {
-    const a = L.latLng(routeLatLngs[i-1]);
-    const b = L.latLng(routeLatLngs[i]);
-    totalDist += a.distanceTo(b);
-    cumulativeDist.push(totalDist);
-  }
+  recomputeRouteMetrics();
 
   leafletMap = L.map('map', {
     zoomControl: true,
@@ -1598,8 +1594,10 @@ function setupMap() {
     maxZoom: 19,
   }).addTo(leafletMap);
 
-  // White halo behind the route for legibility on the grey map
-  L.polyline(routeLatLngs, {
+  // White halo behind the route for legibility on the grey map.
+  // Starts as straight lines between waypoints; replaced with the
+  // road-following geometry once OSRM responds (see loadRouteFromOSRM).
+  routePolyline = L.polyline(routeLatLngs, {
     color: '#ffffff', weight: 10, opacity: 0.9,
     lineCap: 'round', lineJoin: 'round',
   }).addTo(leafletMap);
@@ -1644,6 +1642,56 @@ function setupMap() {
   // Refresh map size after layout settles
   setTimeout(() => leafletMap.invalidateSize(), 200);
   window.addEventListener('resize', () => leafletMap.invalidateSize());
+
+  // Replace the straight lines with a real road-following route.
+  loadRouteFromOSRM();
+}
+
+/* Recompute cumulative distances along whatever is currently in routeLatLngs. */
+function recomputeRouteMetrics() {
+  cumulativeDist = [0];
+  totalDist = 0;
+  for (let i = 1; i < routeLatLngs.length; i++) {
+    const a = L.latLng(routeLatLngs[i-1]);
+    const b = L.latLng(routeLatLngs[i]);
+    totalDist += a.distanceTo(b);
+    cumulativeDist.push(totalDist);
+  }
+}
+
+/* Fetch a road-following route through every waypoint via the
+   public OSRM demo (OpenStreetMap routing). Replaces the straight
+   polyline + recomputes pixel positions. Falls back silently to
+   the straight lines if the request fails. */
+async function loadRouteFromOSRM() {
+  try {
+    const coords = CONFIG.route.map(w => `${w.lng},${w.lat}`).join(';');
+    const url = `https://router.project-osrm.org/route/v1/driving/${coords}`
+              + `?overview=full&geometries=geojson&continue_straight=true`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('OSRM HTTP ' + res.status);
+    const data = await res.json();
+    if (!data.routes || !data.routes[0]) throw new Error('No route returned');
+
+    // GeoJSON coords are [lng, lat]; Leaflet wants [lat, lng].
+    const geom = data.routes[0].geometry.coordinates;
+    routeLatLngs = geom.map(c => [c[1], c[0]]);
+
+    recomputeRouteMetrics();
+
+    // Update the visible polyline.
+    if (routePolyline) routePolyline.setLatLngs(routeLatLngs);
+
+    // Rebuild pixels at their new (road-following) positions.
+    pixelMarkers.forEach(m => leafletMap.removeLayer(m));
+    pixelMarkers = [];
+    buildPixels();
+
+    // Snap the runner to the new start (in case the geometry shifted).
+    if (runnerMarker) runnerMarker.setLatLng(routeLatLngs[0]);
+  } catch (err) {
+    console.warn('Falling back to straight-line route (OSRM unavailable):', err);
+  }
 }
 
 /* Pre-compute a point along the polyline at fractional distance 0..1. */
@@ -1695,6 +1743,7 @@ function buildPixels() {
     });
 
     const marker = L.marker(ll, { icon, riseOnHover: true }).addTo(leafletMap);
+    pixelMarkers.push(marker);
 
     // Hover tooltip with rich sponsor info (if any)
     let tipHtml;
