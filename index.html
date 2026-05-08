@@ -31,6 +31,8 @@
 
   --accent:        #1a73e8;  /* TeaTrade blue */
   --accent-orange: #f56600;  /* Run / charity orange */
+  --gold:          #c5a572;  /* Aztec gold — start & finish premium */
+  --gold-deep:     #a88650;  /* Deeper gold for text/buttons */
 
   --shadow-sm: 0 1px 2px rgba(0,0,0,.06);
   --shadow:    0 2px 8px rgba(0,0,0,.08);
@@ -150,12 +152,14 @@ button { font-family: inherit; }
 .hero-route .route-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 18px;
   flex-wrap: wrap;
 }
 .btn-track {
   padding: 10px 18px;
   font-size: 0.85rem;
+  margin-left: auto;
 }
 .btn-track svg { width: 16px; height: 16px; }
 .hero-route .eyebrow {
@@ -398,7 +402,7 @@ button { font-family: inherit; }
 }
 .map-legend__dot--sponsored { background: var(--accent-orange); }
 .map-legend__dot--corporate { background: var(--text); }
-.map-legend__dot--premium   { background: var(--accent); }
+.map-legend__dot--premium   { background: var(--gold); }
 @media (max-width: 720px) {
   .map-legend { font-size: 0.72rem; padding: 6px 12px; gap: 10px; }
 }
@@ -670,10 +674,10 @@ button { font-family: inherit; }
   color: var(--text);
 }
 .mile--claimed { background: var(--accent-orange); color: #fff; font-weight: 500; }
-.mile--claimed.tier-premium  { background: var(--accent); }
+.mile--claimed.tier-premium  { background: var(--gold); }
 .mile--claimed.tier-corporate{ background: var(--text); }
-/* Available-but-premium grid cell (un-claimed mile at £100). */
-.mile--premium-available { background: var(--accent); color: #fff; font-weight: 500; }
+/* Available-but-premium grid cell (start / finish at £250). */
+.mile--premium-available { background: var(--gold); color: #fff; font-weight: 500; }
 /* Sponsored miles are locked — visual cue and disabled cursor. */
 .mile--claimed { cursor: default; }
 /* =============================================================
@@ -865,10 +869,13 @@ button { font-family: inherit; }
   z-index: 999;
 }
 .pixel--claimed { background: var(--accent-orange); }
-.pixel--claimed.tier-premium  { background: var(--accent); }
+.pixel--claimed.tier-premium  { background: var(--gold); }
 .pixel--claimed.tier-corporate{ background: var(--text); }
-/* Available-but-premium slot (un-claimed mile offered at £100). */
-.pixel--premium-available { background: var(--accent); }
+/* Available-but-premium slot (un-claimed mile offered at £250). */
+.pixel--premium-available {
+  background: var(--gold);
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(197,165,114,0.35);
+}
 
 /* Popup styling */
 .leaflet-popup-content-wrapper {
@@ -1285,27 +1292,27 @@ button { font-family: inherit; }
   line-height: 1.45;
 }
 
-/* Premium variant of the sponsor modal — swap orange accents for blue
-   so the visual matches the blue "Premium" dot on the map. */
-.sponsor-modal.is-premium .sponsor-glass h3 strong { color: var(--accent); }
-.sponsor-modal.is-premium .eyebrow { color: var(--accent); }
+/* Premium variant of the sponsor modal — swap orange accents for gold
+   so the visual matches the gold start/finish dots on the map. */
+.sponsor-modal.is-premium .sponsor-glass h3 strong { color: var(--gold-deep); }
+.sponsor-modal.is-premium .eyebrow { color: var(--gold-deep); }
 .sponsor-modal.is-premium .sponsor-single {
-  border-color: var(--accent);
-  box-shadow: 0 4px 16px rgba(26,115,232,.18);
+  border-color: var(--gold);
+  box-shadow: 0 4px 16px rgba(197,165,114,0.25);
 }
-.sponsor-modal.is-premium .sponsor-single__price { color: var(--accent); }
+.sponsor-modal.is-premium .sponsor-single__price { color: var(--gold-deep); }
 .sponsor-modal.is-premium .btn-primary {
-  background: var(--accent);
-  box-shadow: 0 4px 14px rgba(26,115,232,.35);
+  background: var(--gold-deep);
+  box-shadow: 0 4px 14px rgba(168,134,80,0.35);
 }
 .sponsor-modal.is-premium .btn-primary:hover {
-  background: #1557b0;
+  background: #8c6e3f;
 }
 
-/* Premium variant of the hover card (available premium slots). */
+/* Premium variant of the hover card (gold start / finish slots). */
 .sponsor-card.is-premium .sponsor-card__eyebrow,
 .sponsor-card.is-premium .sponsor-card__amt,
-.sponsor-card.is-premium .sponsor-card__cta { color: var(--accent); }
+.sponsor-card.is-premium .sponsor-card__cta { color: var(--gold-deep); }
 .sponsor-opt {
   position: relative;
   text-align: left;
@@ -1602,7 +1609,7 @@ button { font-family: inherit; }
       <span><span class="map-legend__dot map-legend__dot--available"></span>Available</span>
       <span><span class="map-legend__dot map-legend__dot--sponsored"></span>Sponsored</span>
       <span><span class="map-legend__dot map-legend__dot--corporate"></span>Corporate</span>
-      <span><span class="map-legend__dot map-legend__dot--premium"></span>Premium</span>
+      <span><span class="map-legend__dot map-legend__dot--premium"></span>Start &amp; Finish</span>
     </div>
 
     <!-- Top-right: primary actions -->
@@ -1798,13 +1805,12 @@ const CONFIG = {
   pixelCount: 190,
   pixelPrice: 10,  // £ per pixel sponsorship
   milePrice:  50,  // £ standard sponsorship per mile
-  premiumPrice: 100, // £ premium-tier sponsorship per mile
+  premiumPrice: 250, // £ gold-tier (start & finish) sponsorship
 
-  /* Mile numbers offered as PREMIUM availability. They render as blue
-     dots on the map (matching the legend) and open the sponsor modal
-     in its premium variant (£100, blue accents). Avoid overlap with
-     sponsoredPixels below — those are already claimed. */
-  premiumMiles: [1, 7, 20, 35, 42, 57, 70, 85, 105, 130, 145, 165, 180],
+  /* Mile numbers offered as the premium GOLD tier — reserved for the
+     start line and the finish line. They render as aztec-gold dots
+     on the map and open the sponsor modal in its premium variant. */
+  premiumMiles: [1, 190],
 
   /* When scrolly-mapping, how zoomed-in to be while panning. */
   mapZoom: 10,
