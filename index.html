@@ -409,6 +409,7 @@ button { font-family: inherit; }
 .map-legend__dot--sponsored { background: var(--accent-orange); }
 .map-legend__dot--corporate { background: var(--text); }
 .map-legend__dot--premium   { background: var(--gold); }
+.map-legend__dot--featured  { background: var(--accent); }
 @media (max-width: 720px) {
   .map-legend { font-size: 0.72rem; padding: 6px 12px; gap: 10px; }
 }
@@ -685,6 +686,8 @@ button { font-family: inherit; }
 .mile--claimed.tier-corporate{ background: var(--text); }
 /* Available-but-premium grid cell (start / finish at £250). */
 .mile--premium-available { background: var(--gold); color: #fff; font-weight: 500; }
+/* Available-but-featured grid cell (every 10th mile at £100). */
+.mile--featured-available { background: var(--accent); color: #fff; font-weight: 500; }
 /* Sponsored miles are locked — visual cue and disabled cursor. */
 .mile--claimed { cursor: default; }
 /* =============================================================
@@ -882,6 +885,11 @@ button { font-family: inherit; }
 .pixel--premium-available {
   background: var(--gold);
   box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(197,165,114,0.35);
+}
+/* Available-but-featured slot (every 10th mile, blue accent at £100). */
+.pixel--featured-available {
+  background: var(--accent);
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(26,115,232,0.30);
 }
 
 /* Popup styling */
@@ -1320,6 +1328,27 @@ button { font-family: inherit; }
 .sponsor-card.is-premium .sponsor-card__eyebrow,
 .sponsor-card.is-premium .sponsor-card__amt,
 .sponsor-card.is-premium .sponsor-card__cta { color: var(--gold-deep); }
+
+/* Featured variant of the sponsor modal — every-10th-mile blue accent. */
+.sponsor-modal.is-featured .sponsor-glass h3 strong { color: var(--accent); }
+.sponsor-modal.is-featured .eyebrow { color: var(--accent); }
+.sponsor-modal.is-featured .sponsor-single {
+  border-color: var(--accent);
+  box-shadow: 0 4px 16px rgba(26,115,232,0.22);
+}
+.sponsor-modal.is-featured .sponsor-single__price { color: var(--accent); }
+.sponsor-modal.is-featured .btn-primary {
+  background: var(--accent);
+  box-shadow: 0 4px 14px rgba(26,115,232,0.35);
+}
+.sponsor-modal.is-featured .btn-primary:hover {
+  background: #155cb0;
+}
+
+/* Featured variant of the hover card. */
+.sponsor-card.is-featured .sponsor-card__eyebrow,
+.sponsor-card.is-featured .sponsor-card__amt,
+.sponsor-card.is-featured .sponsor-card__cta { color: var(--accent); }
 .sponsor-opt {
   position: relative;
   text-align: left;
@@ -1616,6 +1645,7 @@ button { font-family: inherit; }
       <span><span class="map-legend__dot map-legend__dot--available"></span>Available</span>
       <span><span class="map-legend__dot map-legend__dot--sponsored"></span>Sponsored</span>
       <span><span class="map-legend__dot map-legend__dot--corporate"></span>Corporate</span>
+      <span><span class="map-legend__dot map-legend__dot--featured"></span>Premium</span>
       <span><span class="map-legend__dot map-legend__dot--premium"></span>Start &amp; Finish</span>
     </div>
 
@@ -1668,6 +1698,7 @@ button { font-family: inherit; }
         <span><span class="swatch" style="background: rgba(0,0,0,.04); border:1px solid var(--hairline);"></span>Available</span>
         <span><span class="swatch" style="background: var(--accent-orange);"></span>Sponsored</span>
         <span><span class="swatch" style="background: var(--text);"></span>Corporate</span>
+        <span><span class="swatch" style="background: var(--accent);"></span>Premium</span>
         <span><span class="swatch" style="background: var(--gold);"></span>Start &amp; Finish</span>
       </div>
     </div>
@@ -1818,6 +1849,10 @@ const CONFIG = {
      start line and the finish line. They render as aztec-gold dots
      on the map and open the sponsor modal in its premium variant. */
   premiumMiles: [1, 190],
+  featuredPrice: 100,
+  /* Every 10th mile becomes a featured (blue) premium slot — a step
+     up from a standard £50 mile, but not the gold start/finish. */
+  featuredMiles: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180],
 
   /* When scrolly-mapping, how zoomed-in to be while panning. */
   mapZoom: 10,
@@ -2020,7 +2055,9 @@ function pointAlongRoute(t) {
 
 /* Build the markup for the wide hover card.
    Used by both the Leaflet pixel tooltip and the in-grid mile tooltip. */
-function sponsorCardHTML(mileNum, sponsor, isPremiumAvailable) {
+function sponsorCardHTML(mileNum, sponsor, availableTier) {
+  const isPremiumAvailable = availableTier === 'premium';
+  const isFeaturedAvailable = availableTier === 'featured';
   const logoBlock = sponsor
     ? `<div class="sponsor-card__logo" style="background:${sponsor.logoBg || '#5f6368'};">${
          sponsor.logo
@@ -2038,13 +2075,21 @@ function sponsorCardHTML(mileNum, sponsor, isPremiumAvailable) {
       `
     : isPremiumAvailable
       ? `
-        <div class="sponsor-card__eyebrow">Mile ${mileNum} · Premium · Available</div>
+        <div class="sponsor-card__eyebrow">Mile ${mileNum} · Start &amp; Finish · Available</div>
         <div class="sponsor-card__name sponsor-card__name--placeholder">— your name here —</div>
         <div class="sponsor-card__amt">£${CONFIG.premiumPrice}</div>
         <div class="sponsor-card__msg sponsor-card__msg--placeholder">“ — your message here — ”</div>
         <div class="sponsor-card__cta">Click to sponsor this premium mile →</div>
       `
-      : `
+      : isFeaturedAvailable
+        ? `
+        <div class="sponsor-card__eyebrow">Mile ${mileNum} · Premium · Available</div>
+        <div class="sponsor-card__name sponsor-card__name--placeholder">— your name here —</div>
+        <div class="sponsor-card__amt">£${CONFIG.featuredPrice}</div>
+        <div class="sponsor-card__msg sponsor-card__msg--placeholder">“ — your message here — ”</div>
+        <div class="sponsor-card__cta">Click to sponsor this premium mile →</div>
+      `
+        : `
         <div class="sponsor-card__eyebrow">Mile ${mileNum} · Available</div>
         <div class="sponsor-card__name sponsor-card__name--placeholder">— your name here —</div>
         <div class="sponsor-card__amt">£${CONFIG.milePrice}</div>
@@ -2052,7 +2097,9 @@ function sponsorCardHTML(mileNum, sponsor, isPremiumAvailable) {
         <div class="sponsor-card__cta">Click to sponsor this mile →</div>
       `;
 
-  const cardCls = 'sponsor-card' + (isPremiumAvailable && !sponsor ? ' is-premium' : '');
+  let cardCls = 'sponsor-card';
+  if (!sponsor && isPremiumAvailable)  cardCls += ' is-premium';
+  if (!sponsor && isFeaturedAvailable) cardCls += ' is-featured';
   return `<div class="${cardCls}">${logoBlock}<div class="sponsor-card__body">${body}</div></div>`;
 }
 
@@ -2062,21 +2109,26 @@ function sponsorCardHTML(mileNum, sponsor, isPremiumAvailable) {
 function buildPixels() {
   const sponsorByPixel = {};
   CONFIG.sponsoredPixels.forEach(s => sponsorByPixel[s.pixel] = s);
-  const premiumSet = new Set(CONFIG.premiumMiles || []);
+  const premiumSet  = new Set(CONFIG.premiumMiles  || []);
+  const featuredSet = new Set(CONFIG.featuredMiles || []);
 
   for (let i = 1; i <= CONFIG.pixelCount; i++) {
     const t = (i - 0.5) / CONFIG.pixelCount;
     const ll = pointAlongRoute(t);
     const sponsor = sponsorByPixel[i];
-    const isPremiumAvailable = !sponsor && premiumSet.has(i);
+    const availableTier = !sponsor && premiumSet.has(i)  ? 'premium'
+                        : !sponsor && featuredSet.has(i) ? 'featured'
+                        : null;
 
     let cls = 'pixel';
     if (sponsor) {
       cls += ' pixel--claimed';
       if (sponsor.tier === 'premium')   cls += ' tier-premium';
       if (sponsor.tier === 'corporate') cls += ' tier-corporate';
-    } else if (isPremiumAvailable) {
+    } else if (availableTier === 'premium') {
       cls += ' pixel--premium-available';
+    } else if (availableTier === 'featured') {
+      cls += ' pixel--featured-available';
     }
 
     const icon = L.divIcon({
@@ -2089,7 +2141,7 @@ function buildPixels() {
     const marker = L.marker(ll, { icon, riseOnHover: true }).addTo(leafletMap);
     pixelMarkers.push(marker);
 
-    marker.bindTooltip(sponsorCardHTML(i, sponsor, isPremiumAvailable), {
+    marker.bindTooltip(sponsorCardHTML(i, sponsor, availableTier), {
       className: 'pixel-tip',
       direction: 'top',
       offset: [0, -6],
@@ -2100,7 +2152,7 @@ function buildPixels() {
     // Only un-sponsored miles open the sponsor modal. Sponsored ones
     // are locked to avoid double-sponsorship of the same mile.
     if (!sponsor) {
-      marker.on('click', () => openSponsorModal(i, isPremiumAvailable ? 'premium' : 'standard'));
+      marker.on('click', () => openSponsorModal(i, availableTier || 'standard'));
     }
   }
 }
@@ -2225,7 +2277,8 @@ function buildMilesGrid() {
   const grid = document.getElementById('milesGrid');
   const map = {};
   CONFIG.sponsoredPixels.forEach(s => map[s.pixel] = s);
-  const premiumSet = new Set(CONFIG.premiumMiles || []);
+  const premiumSet  = new Set(CONFIG.premiumMiles  || []);
+  const featuredSet = new Set(CONFIG.featuredMiles || []);
   let claimed = 0;
 
   for (let i = 1; i <= 190; i++) {
@@ -2236,7 +2289,9 @@ function buildMilesGrid() {
     block.textContent = i;
 
     const s = map[i];
-    const isPremiumAvailable = !s && premiumSet.has(i);
+    const availableTier = !s && premiumSet.has(i)  ? 'premium'
+                        : !s && featuredSet.has(i) ? 'featured'
+                        : null;
     if (s) {
       claimed++;
       block.classList.add('mile--claimed');
@@ -2244,9 +2299,12 @@ function buildMilesGrid() {
       if (s.tier === 'corporate') block.classList.add('tier-corporate');
       block.setAttribute('aria-label',
         `Mile ${i} — sponsored by ${s.sponsor}, £${s.amount}`);
-    } else if (isPremiumAvailable) {
+    } else if (availableTier === 'premium') {
       block.classList.add('mile--premium-available');
-      block.setAttribute('aria-label', `Mile ${i} — premium slot available at £${CONFIG.premiumPrice}`);
+      block.setAttribute('aria-label', `Mile ${i} — start/finish slot available at £${CONFIG.premiumPrice}`);
+    } else if (availableTier === 'featured') {
+      block.classList.add('mile--featured-available');
+      block.setAttribute('aria-label', `Mile ${i} — premium slot available at £${CONFIG.featuredPrice}`);
     } else {
       block.setAttribute('aria-label', `Mile ${i} — available to sponsor`);
     }
@@ -2260,14 +2318,14 @@ function buildMilesGrid() {
     // as the Leaflet pixel tooltip so the two views stay in sync.
     const tip = document.createElement('div');
     tip.className = 'mile__tooltip';
-    tip.innerHTML = sponsorCardHTML(i, s, isPremiumAvailable);
+    tip.innerHTML = sponsorCardHTML(i, s, availableTier);
     block.appendChild(tip);
 
     // Only un-sponsored miles are clickable. Sponsored ones are locked
     // so we never get double-sponsorship on a single mile.
     if (!s) {
       block.addEventListener('click',
-        () => openSponsorModal(i, isPremiumAvailable ? 'premium' : 'standard'));
+        () => openSponsorModal(i, availableTier || 'standard'));
     }
     grid.appendChild(block);
   }
@@ -2402,22 +2460,31 @@ function setupSponsorModal() {
 
   openSponsorModal = function (pixelNum, tier) {
     currentPixel  = pixelNum;
-    currentTier   = tier === 'premium' ? 'premium' : 'standard';
-    currentAmount = currentTier === 'premium' ? CONFIG.premiumPrice : CONFIG.milePrice;
+    currentTier   = (tier === 'premium' || tier === 'featured') ? tier : 'standard';
+    currentAmount = currentTier === 'premium'  ? CONFIG.premiumPrice
+                  : currentTier === 'featured' ? CONFIG.featuredPrice
+                  : CONFIG.milePrice;
 
     eyebrow.textContent = currentTier === 'premium'
-      ? `Mile ${pixelNum} of 190 · Premium`
-      : `Mile ${pixelNum} of 190`;
+      ? `Mile ${pixelNum} of 190 · Start & Finish`
+      : currentTier === 'featured'
+        ? `Mile ${pixelNum} of 190 · Premium`
+        : `Mile ${pixelNum} of 190`;
     title.innerHTML = currentTier === 'premium'
-      ? 'Sponsor a <strong>premium mile</strong>.'
-      : 'Sponsor a <strong>mile</strong>.';
+      ? 'Sponsor a <strong>start &amp; finish</strong> mile.'
+      : currentTier === 'featured'
+        ? 'Sponsor a <strong>premium mile</strong>.'
+        : 'Sponsor a <strong>mile</strong>.';
     priceEl.textContent = '£' + currentAmount;
     scopeEl.textContent = currentTier === 'premium'
-      ? 'One premium mile of the route'
-      : 'One mile of the route';
+      ? 'The start (or finish) of the route'
+      : currentTier === 'featured'
+        ? 'A premium mile of the route'
+        : 'One mile of the route';
     contAmt.textContent = '£' + currentAmount;
 
-    modal.classList.toggle('is-premium', currentTier === 'premium');
+    modal.classList.toggle('is-premium',  currentTier === 'premium');
+    modal.classList.toggle('is-featured', currentTier === 'featured');
     modal.classList.add('is-open');
   };
 
