@@ -2231,13 +2231,71 @@ button { font-family: inherit; }
     <h3>Caffeine boost.</h3>
     <p>You just gave the runner a much-needed energy hit. Want to make it real?</p>
     <div class="teacup">
-      <div class="teacup__steam"><svg style="width:18px;height:18px;color:var(--muted);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M7 9c0-2 2-2 2-4M11 9c0-2 2-2 2-4M15 9c0-2 2-2 2-4"/></svg></div>
+      <div class="teacup__steam"><svg style="width:18px;height:18px;color:var(--muted);"
+        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+        stroke-linejoin="round"><path d="M7 9c0-2 2-2 2-4M11 9c0-2 2-2 2-4M15 9c0-2 2-2 2-4"/></svg></div>
       <div class="teacup__body"><div class="teacup__tea"></div></div>
       <div class="teacup__handle"></div>
     </div>
     <button class="btn btn-primary" id="caffeineDonateBtn"><svg><use href="#i-tea"/></svg> Donate £5 to fuel a mile</button>
   </div>
 </div>
+
+<!-- ===============================
+     PASSWORD PROTECT OVERLAY (ADD-ONLY)
+     =============================== -->
+<div id="pwProtect" style="position:fixed;inset:0;z-index:30000;display:flex;align-items:center;justify-content:center;background:rgba(20,22,26,0.88);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);">
+  <div style="background:var(--panel);border-radius:22px;box-shadow:0 24px 60px rgba(245,102,0,0.18);border:2px solid var(--accent-orange);padding:44px 36px 32px;max-width:400px;width:100%;display:flex;flex-direction:column;align-items:center;">
+    <svg style="width:38px;height:38px;color:var(--accent-orange);margin-bottom:18px;"><use href='#i-tea'/></svg>
+    <h3 style="font-weight:700;font-size:1.5rem;letter-spacing:-0.01em;margin-bottom:10px;color:var(--accent-orange);">Password Required</h3>
+    <div style="font-size:1.05rem;color:var(--text);margin-bottom:18px;text-align:center;font-weight:400;max-width:340px;">
+      This site is currently password protected.<br>
+      Please enter the password to continue.
+    </div>
+    <form id="pwForm" autocomplete="off" style="width:100%;display:flex;flex-direction:column;gap:14px;">
+      <input id="pwInput" type="password" inputmode="text" placeholder="Password" style="font:inherit;border:2px solid var(--accent-orange);background:var(--bg);color:var(--text);border-radius:12px;padding:14px 14px;font-size:1.1rem;text-align:center;outline:none;box-shadow:0 2px 12px rgba(245,102,0,0.08);transition:border-color .18s;"
+        autofocus />
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;font-size:1.05rem;padding:12px 0 10px 0;border-radius:999px;">Unlock</button>
+      <div id="pwError" style="color:#b22a36;font-size:1.02rem;min-height:1.2em;text-align:center;font-weight:500;"></div>
+    </form>
+  </div>
+</div>
+<script>
+(function() {
+  const PW = 'run.teatrade';
+  const LS_KEY = 'teatrade_pw_ok';
+  function showPwProtect(show) {
+    document.getElementById('pwProtect').style.display = show ? 'flex' : 'none';
+    if (show) setTimeout(() => { document.getElementById('pwInput').focus(); }, 100);
+  }
+  function checkPw() {
+    if (localStorage.getItem(LS_KEY) === '1') {
+      showPwProtect(false);
+      return true;
+    }
+    showPwProtect(true);
+    return false;
+  }
+  document.addEventListener('DOMContentLoaded', function() {
+    if (!checkPw()) {
+      document.body.style.overflow = 'hidden';
+    }
+    document.getElementById('pwForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const val = document.getElementById('pwInput').value;
+      if (val === PW) {
+        localStorage.setItem(LS_KEY, '1');
+        showPwProtect(false);
+        document.body.style.overflow = '';
+      } else {
+        document.getElementById('pwError').textContent = 'Incorrect password.';
+        document.getElementById('pwInput').value = '';
+        document.getElementById('pwInput').focus();
+      }
+    });
+  });
+})();
+</script>
 
 <script>
 /* ================================================================
