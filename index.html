@@ -661,6 +661,8 @@ button { font-family: inherit; }
 .mile--claimed { background: var(--accent-orange); color: #fff; font-weight: 500; }
 .mile--claimed.tier-premium  { background: var(--accent); }
 .mile--claimed.tier-corporate{ background: var(--text); }
+/* Available-but-premium grid cell (un-claimed mile at £100). */
+.mile--premium-available { background: var(--accent); color: #fff; font-weight: 500; }
 /* Sponsored miles are locked — visual cue and disabled cursor. */
 .mile--claimed { cursor: default; }
 /* =============================================================
@@ -854,6 +856,8 @@ button { font-family: inherit; }
 .pixel--claimed { background: var(--accent-orange); }
 .pixel--claimed.tier-premium  { background: var(--accent); }
 .pixel--claimed.tier-corporate{ background: var(--text); }
+/* Available-but-premium slot (un-claimed mile offered at £100). */
+.pixel--premium-available { background: var(--accent); }
 
 /* Popup styling */
 .leaflet-popup-content-wrapper {
@@ -1218,6 +1222,28 @@ button { font-family: inherit; }
   color: var(--text);
   line-height: 1.45;
 }
+
+/* Premium variant of the sponsor modal — swap orange accents for blue
+   so the visual matches the blue "Premium" dot on the map. */
+.sponsor-modal.is-premium .sponsor-glass h3 strong { color: var(--accent); }
+.sponsor-modal.is-premium .eyebrow { color: var(--accent); }
+.sponsor-modal.is-premium .sponsor-single {
+  border-color: var(--accent);
+  box-shadow: 0 4px 16px rgba(26,115,232,.18);
+}
+.sponsor-modal.is-premium .sponsor-single__price { color: var(--accent); }
+.sponsor-modal.is-premium .btn-primary {
+  background: var(--accent);
+  box-shadow: 0 4px 14px rgba(26,115,232,.35);
+}
+.sponsor-modal.is-premium .btn-primary:hover {
+  background: #1557b0;
+}
+
+/* Premium variant of the hover card (available premium slots). */
+.sponsor-card.is-premium .sponsor-card__eyebrow,
+.sponsor-card.is-premium .sponsor-card__amt,
+.sponsor-card.is-premium .sponsor-card__cta { color: var(--accent); }
 .sponsor-opt {
   position: relative;
   text-align: left;
@@ -1612,9 +1638,9 @@ button { font-family: inherit; }
     <p class="lede">Pop your name, message, or company logo onto your mile. Every pound directly funds the run and the two charities.</p>
 
     <div class="sponsor-single" aria-label="Sponsorship amount">
-      <div class="sponsor-single__price">£50</div>
+      <div class="sponsor-single__price" id="sponsorPrice">£50</div>
       <div class="sponsor-single__body">
-        <div class="sponsor-single__scope">One mile of the route</div>
+        <div class="sponsor-single__scope" id="sponsorScope">One mile of the route</div>
         <div class="sponsor-single__desc">Your name, message and (optionally) your logo displayed on this mile across the map and the sponsor panel.</div>
       </div>
     </div>
@@ -1656,7 +1682,14 @@ const CONFIG = {
      Tweak granularity here. 190 keeps it aligned to mileage. */
   pixelCount: 190,
   pixelPrice: 10,  // £ per pixel sponsorship
-  milePrice:  50,  // £ to fully "run" a whole mile
+  milePrice:  50,  // £ standard sponsorship per mile
+  premiumPrice: 100, // £ premium-tier sponsorship per mile
+
+  /* Mile numbers offered as PREMIUM availability. They render as blue
+     dots on the map (matching the legend) and open the sponsor modal
+     in its premium variant (£100, blue accents). Avoid overlap with
+     sponsoredPixels below — those are already claimed. */
+  premiumMiles: [7, 20, 35, 42, 57, 70, 85, 105, 130, 145, 165, 180],
 
   /* When scrolly-mapping, how zoomed-in to be while panning. */
   mapZoom: 10,
@@ -1883,7 +1916,7 @@ function pointAlongRoute(t) {
 
 /* Build the markup for the wide hover card.
    Used by both the Leaflet pixel tooltip and the in-grid mile tooltip. */
-function sponsorCardHTML(mileNum, sponsor) {
+function sponsorCardHTML(mileNum, sponsor, isPremiumAvailable) {
   const logoBlock = sponsor
     ? `<div class="sponsor-card__logo" style="background:${sponsor.logoBg || '#5f6368'};">${
          sponsor.logo
@@ -1899,15 +1932,24 @@ function sponsorCardHTML(mileNum, sponsor) {
         <div class="sponsor-card__amt">£${sponsor.amount.toLocaleString('en-GB')}</div>
         <div class="sponsor-card__msg">“${sponsor.message}”</div>
       `
-    : `
+    : isPremiumAvailable
+      ? `
+        <div class="sponsor-card__eyebrow">Mile ${mileNum} · Premium · Available</div>
+        <div class="sponsor-card__name sponsor-card__name--placeholder">— your name here —</div>
+        <div class="sponsor-card__amt">£${CONFIG.premiumPrice}</div>
+        <div class="sponsor-card__msg sponsor-card__msg--placeholder">“ — your message here — ”</div>
+        <div class="sponsor-card__cta">Click to sponsor this premium mile →</div>
+      `
+      : `
         <div class="sponsor-card__eyebrow">Mile ${mileNum} · Available</div>
         <div class="sponsor-card__name sponsor-card__name--placeholder">— your name here —</div>
-        <div class="sponsor-card__amt">£50</div>
+        <div class="sponsor-card__amt">£${CONFIG.milePrice}</div>
         <div class="sponsor-card__msg sponsor-card__msg--placeholder">“ — your message here — ”</div>
         <div class="sponsor-card__cta">Click to sponsor this mile →</div>
       `;
 
-  return `<div class="sponsor-card">${logoBlock}<div class="sponsor-card__body">${body}</div></div>`;
+  const cardCls = 'sponsor-card' + (isPremiumAvailable && !sponsor ? ' is-premium' : '');
+  return `<div class="${cardCls}">${logoBlock}<div class="sponsor-card__body">${body}</div></div>`;
 }
 
 /* Build the pixelated, sponsorable route blocks.
@@ -1916,17 +1958,21 @@ function sponsorCardHTML(mileNum, sponsor) {
 function buildPixels() {
   const sponsorByPixel = {};
   CONFIG.sponsoredPixels.forEach(s => sponsorByPixel[s.pixel] = s);
+  const premiumSet = new Set(CONFIG.premiumMiles || []);
 
   for (let i = 1; i <= CONFIG.pixelCount; i++) {
     const t = (i - 0.5) / CONFIG.pixelCount;
     const ll = pointAlongRoute(t);
     const sponsor = sponsorByPixel[i];
+    const isPremiumAvailable = !sponsor && premiumSet.has(i);
 
     let cls = 'pixel';
     if (sponsor) {
       cls += ' pixel--claimed';
       if (sponsor.tier === 'premium')   cls += ' tier-premium';
       if (sponsor.tier === 'corporate') cls += ' tier-corporate';
+    } else if (isPremiumAvailable) {
+      cls += ' pixel--premium-available';
     }
 
     const icon = L.divIcon({
@@ -1939,7 +1985,7 @@ function buildPixels() {
     const marker = L.marker(ll, { icon, riseOnHover: true }).addTo(leafletMap);
     pixelMarkers.push(marker);
 
-    marker.bindTooltip(sponsorCardHTML(i, sponsor), {
+    marker.bindTooltip(sponsorCardHTML(i, sponsor, isPremiumAvailable), {
       className: 'pixel-tip',
       direction: 'top',
       offset: [0, -6],
@@ -1950,7 +1996,7 @@ function buildPixels() {
     // Only un-sponsored miles open the sponsor modal. Sponsored ones
     // are locked to avoid double-sponsorship of the same mile.
     if (!sponsor) {
-      marker.on('click', () => openSponsorModal(i));
+      marker.on('click', () => openSponsorModal(i, isPremiumAvailable ? 'premium' : 'standard'));
     }
   }
 }
@@ -2075,6 +2121,7 @@ function buildMilesGrid() {
   const grid = document.getElementById('milesGrid');
   const map = {};
   CONFIG.sponsoredPixels.forEach(s => map[s.pixel] = s);
+  const premiumSet = new Set(CONFIG.premiumMiles || []);
   let claimed = 0;
 
   for (let i = 1; i <= 190; i++) {
@@ -2085,6 +2132,7 @@ function buildMilesGrid() {
     block.textContent = i;
 
     const s = map[i];
+    const isPremiumAvailable = !s && premiumSet.has(i);
     if (s) {
       claimed++;
       block.classList.add('mile--claimed');
@@ -2092,6 +2140,9 @@ function buildMilesGrid() {
       if (s.tier === 'corporate') block.classList.add('tier-corporate');
       block.setAttribute('aria-label',
         `Mile ${i} — sponsored by ${s.sponsor}, £${s.amount}`);
+    } else if (isPremiumAvailable) {
+      block.classList.add('mile--premium-available');
+      block.setAttribute('aria-label', `Mile ${i} — premium slot available at £${CONFIG.premiumPrice}`);
     } else {
       block.setAttribute('aria-label', `Mile ${i} — available to sponsor`);
     }
@@ -2105,13 +2156,14 @@ function buildMilesGrid() {
     // as the Leaflet pixel tooltip so the two views stay in sync.
     const tip = document.createElement('div');
     tip.className = 'mile__tooltip';
-    tip.innerHTML = sponsorCardHTML(i, s);
+    tip.innerHTML = sponsorCardHTML(i, s, isPremiumAvailable);
     block.appendChild(tip);
 
     // Only un-sponsored miles are clickable. Sponsored ones are locked
     // so we never get double-sponsorship on a single mile.
     if (!s) {
-      block.addEventListener('click', () => openSponsorModal(i));
+      block.addEventListener('click',
+        () => openSponsorModal(i, isPremiumAvailable ? 'premium' : 'standard'));
     }
     grid.appendChild(block);
   }
@@ -2235,16 +2287,33 @@ function setupSponsorModal() {
   const modal     = document.getElementById('sponsorModal');
   const closeBtn  = document.getElementById('sponsorClose');
   const eyebrow   = document.getElementById('sponsorEyebrow');
+  const title     = document.getElementById('sponsorTitle');
+  const priceEl   = document.getElementById('sponsorPrice');
+  const scopeEl   = document.getElementById('sponsorScope');
   const continueB = document.getElementById('sponsorContinueBtn');
   const contAmt   = document.getElementById('sponsorContinueAmt');
-  const AMOUNT    = 50; // single unified price per mile/pixel
   let currentPixel = 1;
-  contAmt.textContent = '£' + AMOUNT;
+  let currentTier  = 'standard';
+  let currentAmount = CONFIG.milePrice;
 
-  openSponsorModal = function (pixelNum) {
-    currentPixel = pixelNum;
-    eyebrow.textContent = `Mile ${pixelNum} of 190`;
-    contAmt.textContent = '£' + AMOUNT;
+  openSponsorModal = function (pixelNum, tier) {
+    currentPixel  = pixelNum;
+    currentTier   = tier === 'premium' ? 'premium' : 'standard';
+    currentAmount = currentTier === 'premium' ? CONFIG.premiumPrice : CONFIG.milePrice;
+
+    eyebrow.textContent = currentTier === 'premium'
+      ? `Mile ${pixelNum} of 190 · Premium`
+      : `Mile ${pixelNum} of 190`;
+    title.innerHTML = currentTier === 'premium'
+      ? 'Sponsor a <strong>premium mile</strong>.'
+      : 'Sponsor a <strong>mile</strong>.';
+    priceEl.textContent = '£' + currentAmount;
+    scopeEl.textContent = currentTier === 'premium'
+      ? 'One premium mile of the route'
+      : 'One mile of the route';
+    contAmt.textContent = '£' + currentAmount;
+
+    modal.classList.toggle('is-premium', currentTier === 'premium');
     modal.classList.add('is-open');
   };
 
@@ -2256,8 +2325,8 @@ function setupSponsorModal() {
   });
 
   continueB.addEventListener('click', () => {
-    // TODO: hand off to JustGiving / Stripe with currentPixel + AMOUNT
-    alert(`Sponsoring mile ${currentPixel} for £${AMOUNT}.\n\nWire this up to your donation provider.`);
+    // TODO: hand off to JustGiving / Stripe with currentPixel + currentAmount + currentTier
+    alert(`Sponsoring mile ${currentPixel} (${currentTier}) for £${currentAmount}.\n\nWire this up to your donation provider.`);
     close();
   });
 }
