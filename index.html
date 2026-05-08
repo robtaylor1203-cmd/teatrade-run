@@ -365,9 +365,10 @@ button { font-family: inherit; }
 .route-pill .arrow { color: var(--muted); }
 .route-pill strong { font-weight: 500; }
 
-/* Top-right: action stack */
+/* Top-right: action stack — sits below the site header so the
+   buttons stay fully visible whenever the header is shown. */
 .action-stack {
-  top: 20px;
+  top: calc(var(--header-h) + 16px);
   right: 20px;
   display: flex;
   flex-direction: column;
@@ -375,7 +376,7 @@ button { font-family: inherit; }
   align-items: flex-end;
 }
 @media (max-width: 720px) {
-  .action-stack { right: 12px; top: 12px; }
+  .action-stack { right: 12px; top: calc(var(--header-h) + 10px); }
 }
 
 .btn {
@@ -706,7 +707,9 @@ button { font-family: inherit; }
   .sponsor-card__logo { width: 72px; height: 72px; font-size: 1.3rem; }
 }
 
-/* In-grid hover tooltip wrapper */
+/* In-grid hover tooltip wrapper. Default points UP from the cell.
+   Cells in the top rows get .mile--flip so the tooltip points DOWN
+   instead, preventing it from being clipped by the panel. */
 .mile__tooltip {
   position: absolute;
   bottom: calc(100% + 10px);
@@ -722,6 +725,11 @@ button { font-family: inherit; }
   pointer-events: none;
   transition: opacity .15s ease;
   z-index: 20;
+}
+.mile--flip .mile__tooltip {
+  bottom: auto;
+  top: calc(100% + 10px);
+  transform-origin: top center;
 }
 .mile:hover .mile__tooltip { opacity: 1; }
 
@@ -1127,6 +1135,37 @@ button { font-family: inherit; }
   gap: 12px;
   margin-bottom: 18px;
 }
+.sponsor-single {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: var(--bg);
+  border: 1.5px solid var(--accent-orange);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 16px rgba(245,102,0,.12);
+}
+.sponsor-single__price {
+  font-size: 2rem;
+  font-weight: 500;
+  color: var(--accent-orange);
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+.sponsor-single__body { flex: 1; min-width: 0; }
+.sponsor-single__scope {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+.sponsor-single__desc {
+  font-size: 0.85rem;
+  color: var(--text);
+  line-height: 1.45;
+}
 .sponsor-opt {
   position: relative;
   text-align: left;
@@ -1448,8 +1487,7 @@ button { font-family: inherit; }
         <div class="mile-stats">
           <div class="mile-stat"><div class="num orange" id="statClaimed">0</div><div class="lbl">Claimed</div></div>
           <div class="mile-stat"><div class="num" id="statRemaining">190</div><div class="lbl">Remaining</div></div>
-          <div class="mile-stat"><div class="num">£10</div><div class="lbl">Name only</div></div>
-          <div class="mile-stat"><div class="num">£50</div><div class="lbl">With logo</div></div>
+          <div class="mile-stat"><div class="num">£50</div><div class="lbl">Per mile</div></div>
         </div>
         <button class="mile-panel__close" id="milePanelClose" aria-label="Close">×</button>
       </div>
@@ -1508,21 +1546,16 @@ button { font-family: inherit; }
 <div class="sponsor-modal" id="sponsorModal" role="dialog" aria-modal="true" aria-labelledby="sponsorTitle">
   <div class="sponsor-glass">
     <button class="sponsor-glass__close" id="sponsorClose" aria-label="Close">×</button>
-    <div class="eyebrow" id="sponsorEyebrow">Mile 1</div>
+    <div class="eyebrow" id="sponsorEyebrow">Mile 1 of 190</div>
     <h3 id="sponsorTitle">Sponsor a <strong>mile</strong>.</h3>
-    <p class="lede">Pop your name, message, or company logo onto the route. Every pound directly funds the run and the two charities.</p>
+    <p class="lede">Pop your name, message, or company logo onto your mile. Every pound directly funds the run and the two charities.</p>
 
-    <div class="sponsor-options" role="radiogroup" aria-label="Sponsorship amount">
-      <button class="sponsor-opt is-selected" data-amount="10" data-scope="name" role="radio" aria-checked="true">
-        <div class="price">£10</div>
-        <div class="scope">Name only</div>
-        <div class="desc">Add your name and a short message to this mile.</div>
-      </button>
-      <button class="sponsor-opt" data-amount="50" data-scope="logo" role="radio" aria-checked="false">
-        <div class="price">£50</div>
-        <div class="scope">Logo · featured</div>
-        <div class="desc">Display your full logo and message on this mile.</div>
-      </button>
+    <div class="sponsor-single" aria-label="Sponsorship amount">
+      <div class="sponsor-single__price">£50</div>
+      <div class="sponsor-single__body">
+        <div class="sponsor-single__scope">One mile of the route</div>
+        <div class="sponsor-single__desc">Your name, message and (optionally) your logo displayed on this mile across the map and the sponsor panel.</div>
+      </div>
     </div>
 
     <button class="btn btn-primary" id="sponsorContinueBtn">
@@ -1998,6 +2031,11 @@ function buildMilesGrid() {
       block.setAttribute('aria-label', `Mile ${i} — available to sponsor`);
     }
 
+    // Flip tooltip downward for the top two rows (miles 1–38) so it
+    // doesn't get clipped by the panel header.
+    const row = Math.ceil(i / 19);
+    if (row <= 2) block.classList.add('mile--flip');
+
     // Wide hover card (logo + sponsor details + message). Same markup
     // as the Leaflet pixel tooltip so the two views stay in sync.
     const tip = document.createElement('div');
@@ -2015,6 +2053,7 @@ function buildMilesGrid() {
 
 function setupMilePanel() {
   const panel    = document.getElementById('milePanel');
+  const header   = document.getElementById('siteHeader');
   const openBtn  = document.getElementById('claimOpenBtn');
   const openLink = document.getElementById('claimOpenLink');
   const navLink  = document.getElementById('navSponsorLink');
@@ -2024,12 +2063,14 @@ function setupMilePanel() {
     if (e) e.preventDefault();
     panel.classList.add('is-open');
     panel.setAttribute('aria-hidden', 'false');
+    if (header) header.classList.add('is-hidden'); // free up vertical space
     document.getElementById('map-section')
       .scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   function close() {
     panel.classList.remove('is-open');
     panel.setAttribute('aria-hidden', 'true');
+    if (header) header.classList.remove('is-hidden');
   }
   openBtn.addEventListener('click', open);
   openLink.addEventListener('click', open);
@@ -2126,31 +2167,16 @@ function setupSponsorModal() {
   const modal     = document.getElementById('sponsorModal');
   const closeBtn  = document.getElementById('sponsorClose');
   const eyebrow   = document.getElementById('sponsorEyebrow');
-  const title     = document.getElementById('sponsorTitle');
-  const opts      = modal.querySelectorAll('.sponsor-opt');
   const continueB = document.getElementById('sponsorContinueBtn');
   const contAmt   = document.getElementById('sponsorContinueAmt');
+  const AMOUNT    = 50; // single unified price per mile/pixel
   let currentPixel = 1;
-  let currentAmount = CONFIG.pixelPrice;
-  let currentScope  = 'pixel';
-
-  function selectOpt(opt) {
-    opts.forEach(o => { o.classList.remove('is-selected'); o.setAttribute('aria-checked', 'false'); });
-    opt.classList.add('is-selected');
-    opt.setAttribute('aria-checked', 'true');
-    currentAmount = parseInt(opt.dataset.amount, 10);
-    currentScope  = opt.dataset.scope;
-    contAmt.textContent = '£' + currentAmount;
-    title.innerHTML = currentScope === 'logo'
-      ? 'Sponsor a <strong>mile</strong> with your logo.'
-      : 'Sponsor a <strong>mile</strong>.';
-  }
-  opts.forEach(opt => opt.addEventListener('click', () => selectOpt(opt)));
+  contAmt.textContent = '£' + AMOUNT;
 
   openSponsorModal = function (pixelNum) {
     currentPixel = pixelNum;
     eyebrow.textContent = `Mile ${pixelNum} of 190`;
-    selectOpt(modal.querySelector('.sponsor-opt[data-scope="name"]'));
+    contAmt.textContent = '£' + AMOUNT;
     modal.classList.add('is-open');
   };
 
@@ -2162,8 +2188,8 @@ function setupSponsorModal() {
   });
 
   continueB.addEventListener('click', () => {
-    // TODO: hand off to JustGiving / Stripe with currentPixel + currentAmount + currentScope
-    alert(`Sponsoring mile ${currentPixel} (${currentScope === 'logo' ? 'logo tier' : 'name tier'}) for £${currentAmount}.\n\nWire this up to your donation provider.`);
+    // TODO: hand off to JustGiving / Stripe with currentPixel + AMOUNT
+    alert(`Sponsoring mile ${currentPixel} for £${AMOUNT}.\n\nWire this up to your donation provider.`);
     close();
   });
 }
