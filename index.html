@@ -331,7 +331,7 @@ button { font-family: inherit; }
 /* Keep Leaflet controls below modals */
 .leaflet-top, .leaflet-bottom { z-index: 800 !important; }
 /* Nudge zoom controls down so they don't crowd the route pill */
-.leaflet-top.leaflet-left { padding-top: 76px; }
+.leaflet-top.leaflet-left { padding-top: calc(var(--header-h) + 76px); }
 
 /* --- Map overlays ------------------------------------------------ */
 .map-overlay {
@@ -341,9 +341,10 @@ button { font-family: inherit; }
 }
 .map-overlay > * { pointer-events: auto; }
 
-/* Top-left: route summary pill */
+/* Top-left: route summary pill — sits below the site header so it
+   stays in line with the action stack on the right. */
 .route-pill {
-  top: 20px;
+  top: calc(var(--header-h) + 16px);
   left: 20px;
   background: var(--panel);
   border: 1px solid var(--hairline);
@@ -625,6 +626,8 @@ button { font-family: inherit; }
 .mile--claimed { background: var(--accent-orange); color: #fff; font-weight: 500; }
 .mile--claimed.tier-premium  { background: var(--accent); }
 .mile--claimed.tier-corporate{ background: var(--text); }
+/* Sponsored miles are locked — visual cue and disabled cursor. */
+.mile--claimed { cursor: default; }
 /* =============================================================
    SPONSOR HOVER CARD — shared markup used for both the
    Leaflet pixel hover and the in-grid mile hover. Wide layout:
@@ -1474,7 +1477,7 @@ button { font-family: inherit; }
         <span>Peterston, Wales</span>
         <span>Cutty Sark, London</span>
       </div>
-      <div class="scrubber__hint">Drag the slider, or scroll — hover any pixel to sponsor it</div>
+      <div class="scrubber__hint">Drag the slider, or scroll — hover any mile to see who's sponsored, click an empty one to claim it</div>
     </div>
 
     <!-- Slide-up "Sponsor a Mile" panel -->
@@ -1885,8 +1888,11 @@ function buildPixels() {
       sticky: false,
     });
 
-    // Click any mile (sponsored or not) -> open the sponsor modal.
-    marker.on('click', () => openSponsorModal(i));
+    // Only un-sponsored miles open the sponsor modal. Sponsored ones
+    // are locked to avoid double-sponsorship of the same mile.
+    if (!sponsor) {
+      marker.on('click', () => openSponsorModal(i));
+    }
   }
 }
 
@@ -2043,8 +2049,11 @@ function buildMilesGrid() {
     tip.innerHTML = sponsorCardHTML(i, s);
     block.appendChild(tip);
 
-    // Every mile is clickable — sponsored or not — opens the same modal.
-    block.addEventListener('click', () => openSponsorModal(i));
+    // Only un-sponsored miles are clickable. Sponsored ones are locked
+    // so we never get double-sponsorship on a single mile.
+    if (!s) {
+      block.addEventListener('click', () => openSponsorModal(i));
+    }
     grid.appendChild(block);
   }
   document.getElementById('statClaimed').textContent = claimed;
