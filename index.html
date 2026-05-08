@@ -1755,6 +1755,74 @@ button { font-family: inherit; }
   100% { opacity: 0; transform: translate(var(--cx,100px), var(--cy,-120px)) rotate(720deg); }
 }
 
+/* =============================================================
+   PASSWORD PROTECTION OVERLAY
+   ============================================================= */
+#passwordOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(20, 22, 26, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex; /* Will be hidden by JS if unlocked */
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.password-modal {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 22px;
+  padding: 36px 36px 32px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+  text-align: center;
+  color: var(--text);
+}
+.password-modal h3 {
+  font-weight: 300;
+  font-size: 1.8rem;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+.password-modal h3 strong {
+  font-weight: 500;
+  color: var(--accent-orange);
+}
+.password-modal p {
+  color: var(--muted);
+  font-weight: 300;
+  font-size: 0.95rem;
+  margin-bottom: 22px;
+}
+.password-modal input {
+  width: 100%;
+  font: inherit;
+  border: 1.5px solid var(--hairline);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 12px 14px;
+  transition: border-color .12s ease, box-shadow .12s ease;
+  text-align: center;
+}
+.password-modal input:focus {
+  outline: none;
+  border-color: var(--accent-orange);
+  box-shadow: 0 0 0 3px rgba(245,102,0,0.15);
+}
+#passwordError {
+  background: rgba(220, 53, 69, 0.08);
+  border: 1px solid rgba(220, 53, 69, 0.35);
+  color: #b22a36;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  margin-top: 12px;
+}
+
 </style>
 </head>
 <body>
@@ -2239,7 +2307,61 @@ button { font-family: inherit; }
   </div>
 </div>
 
+<div id="passwordOverlay" style="display: none;">
+  <div class="password-modal">
+    <h3>Site <strong>Protected</strong>.</h3>
+    <p>Please enter the password to view this preview.</p>
+    <form id="passwordForm">
+      <input type="password" id="passwordInput" placeholder="Password" required>
+      <div id="passwordError" style="display:none;">Incorrect password</div>
+      <button type="submit" class="btn btn-primary" style="width:100%; margin-top: 16px; justify-content: center;">
+        Unlock Site
+      </button>
+    </form>
+  </div>
+</div>
+
 <script>
+
+/* ================================================================
+   PASSWORD PROTECTION
+   ================================================================ */
+function setupPasswordProtection() {
+  const overlay = document.getElementById('passwordOverlay');
+  const form = document.getElementById('passwordForm');
+  const input = document.getElementById('passwordInput');
+  const errorMsg = document.getElementById('passwordError');
+
+  // Check if they already unlocked it in this session
+  if (sessionStorage.getItem('site_unlocked') === 'true') {
+    overlay.style.display = 'none';
+    return;
+  }
+
+  // Show overlay and freeze scrolling behind it
+  overlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (input.value === 'run.teatrade') {
+      // Correct password
+      sessionStorage.setItem('site_unlocked', 'true');
+      overlay.style.display = 'none';
+      document.body.style.overflow = ''; // Unfreeze scrolling
+      
+      // Safety trigger: Tell Leaflet to recalculate just in case
+      if (typeof leafletMap !== 'undefined' && leafletMap !== null) {
+        leafletMap.invalidateSize();
+      }
+    } else {
+      // Wrong password
+      errorMsg.style.display = 'block';
+      input.value = '';
+    }
+  });
+}
+
 /* ================================================================
    CONFIG — single source of truth.
    ================================================================ */
@@ -3462,6 +3584,7 @@ function setupHeaderAutoHide() {
    INIT
    ================================================================ */
 document.addEventListener('DOMContentLoaded', () => {
+  setupPasswordProtection(); // <--- ADD THIS LINE HERE
   animateRaised();
   setupCountdown();
   setupHeaderAutoHide();
