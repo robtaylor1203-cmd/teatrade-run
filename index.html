@@ -159,9 +159,7 @@ button { font-family: inherit; }
 .btn-track {
   padding: 10px 18px;
   font-size: 0.85rem;
-  align-self: stretch;
-  justify-content: center;
-  margin-top: 4px;
+  margin-left: auto;
 }
 .btn-track svg { width: 16px; height: 16px; }
 .hero-route .eyebrow {
@@ -1526,6 +1524,9 @@ button { font-family: inherit; }
           <div class="eyebrow">The Run</div>
           <div class="route-row">
             <div class="route">Peterston <svg style="width:12px;height:12px;color:var(--muted);vertical-align:-1px;"><use href="#i-arrow"/></svg> Greenwich · <strong>190 mi</strong></div>
+            <button class="btn btn-primary btn-track" id="trackTrainingBtn" type="button">
+              <svg><use href="#i-runner"/></svg> Track the Training
+            </button>
           </div>
         </div>
       </div>
@@ -1547,9 +1548,6 @@ button { font-family: inherit; }
             <svg class="charity-mini__arrow"><use href="#i-arrow"/></svg>
           </div>
           <p class="charity-mini__tag">The safety net of our industry</p>
-        </button>
-        <button class="btn btn-primary btn-track" id="trackTrainingBtn" type="button">
-          <svg><use href="#i-runner"/></svg> Track the Training
         </button>
       </aside>
     </div>
