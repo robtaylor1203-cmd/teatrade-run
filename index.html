@@ -503,6 +503,12 @@ button { font-family: inherit; }
   box-shadow: var(--shadow-sm);
 }
 .btn-ghost:hover { border-color: var(--text); }
+.btn-blue {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(26,115,232,.30);
+}
+.btn-blue:hover { background: #155cb0; box-shadow: 0 6px 20px rgba(26,115,232,.40); }
 
 @keyframes pulse {
   0%,100% { box-shadow: 0 4px 14px rgba(245,102,0,.35); }
@@ -1703,6 +1709,7 @@ button { font-family: inherit; }
     <!-- Top-right: primary actions -->
     <div class="map-overlay action-stack">
       <button class="btn btn-primary" id="claimOpenBtn">Sponsor a Mile</button>
+      <button class="btn btn-blue" id="donateBtn" type="button">Donate</button>
       <button class="btn btn-ghost" id="caffeineBtn"><svg><use href="#i-coffee"/></svg> Caffeine Boost</button>
     </div>
 
@@ -2751,6 +2758,16 @@ document.addEventListener('DOMContentLoaded', () => {
   setupRaisedOrb();
   setupCharityModal();
   setupStravaModal();
+
+  // Donate button — placeholder hand-off to the donation provider
+  // (JustGiving / Stripe). Lets visitors give any amount without
+  // committing to a full mile.
+  const donateBtn = document.getElementById('donateBtn');
+  if (donateBtn) {
+    donateBtn.addEventListener('click', () => {
+      alert('Donate any amount — wire this up to your JustGiving / Stripe link.');
+    });
+  }
 });
 </script>
 </body>
