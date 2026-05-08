@@ -844,6 +844,21 @@ button { font-family: inherit; }
   top: calc(100% + 10px);
   transform-origin: top center;
 }
+/* Edge-aware horizontal anchoring so the wide hover card never
+   clips outside the Sponsor-a-Mile panel. */
+.mile--edge-left .mile__tooltip {
+  left: 0;
+  transform: translateX(0) scale(0.7);
+  transform-origin: bottom left;
+}
+.mile--edge-left.mile--flip .mile__tooltip { transform-origin: top left; }
+.mile--edge-right .mile__tooltip {
+  left: auto;
+  right: 0;
+  transform: translateX(0) scale(0.7);
+  transform-origin: bottom right;
+}
+.mile--edge-right.mile--flip .mile__tooltip { transform-origin: top right; }
 .mile:hover .mile__tooltip { opacity: 1; }
 
 .mile-panel__legend {
@@ -2348,6 +2363,11 @@ function buildMilesGrid() {
     // doesn't get clipped by the panel header.
     const row = Math.ceil(i / 19);
     if (row <= 2) block.classList.add('mile--flip');
+    // Anchor tooltip to the cell edge for the leftmost / rightmost
+    // columns so the wide card never overflows the panel.
+    const col = ((i - 1) % 19) + 1;
+    if (col <= 3)        block.classList.add('mile--edge-left');
+    else if (col >= 17)  block.classList.add('mile--edge-right');
 
     // Wide hover card (logo + sponsor details + message). Same markup
     // as the Leaflet pixel tooltip so the two views stay in sync.
