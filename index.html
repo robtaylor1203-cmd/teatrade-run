@@ -159,7 +159,9 @@ button { font-family: inherit; }
 .btn-track {
   padding: 10px 18px;
   font-size: 0.85rem;
-  margin-left: auto;
+  align-self: stretch;
+  justify-content: center;
+  margin-top: 4px;
 }
 .btn-track svg { width: 16px; height: 16px; }
 .hero-route .eyebrow {
@@ -1524,9 +1526,6 @@ button { font-family: inherit; }
           <div class="eyebrow">The Run</div>
           <div class="route-row">
             <div class="route">Peterston <svg style="width:12px;height:12px;color:var(--muted);vertical-align:-1px;"><use href="#i-arrow"/></svg> Greenwich · <strong>190 mi</strong></div>
-            <button class="btn btn-primary btn-track" id="trackTrainingBtn" type="button">
-              <svg><use href="#i-runner"/></svg> Track the Training
-            </button>
           </div>
         </div>
       </div>
@@ -1548,6 +1547,9 @@ button { font-family: inherit; }
             <svg class="charity-mini__arrow"><use href="#i-arrow"/></svg>
           </div>
           <p class="charity-mini__tag">The safety net of our industry</p>
+        </button>
+        <button class="btn btn-primary btn-track" id="trackTrainingBtn" type="button">
+          <svg><use href="#i-runner"/></svg> Track the Training
         </button>
       </aside>
     </div>
@@ -1661,7 +1663,7 @@ button { font-family: inherit; }
         <span><span class="swatch" style="background: rgba(0,0,0,.04); border:1px solid var(--hairline);"></span>Available</span>
         <span><span class="swatch" style="background: var(--accent-orange);"></span>Sponsored</span>
         <span><span class="swatch" style="background: var(--text);"></span>Corporate</span>
-        <span><span class="swatch" style="background: var(--accent);"></span>Premium</span>
+        <span><span class="swatch" style="background: var(--gold);"></span>Start &amp; Finish</span>
       </div>
     </div>
   </div>
@@ -1923,29 +1925,7 @@ function setupMap() {
   // Pixel sponsor blocks along the route (the dominant interaction)
   buildPixels();
 
-  // Waypoint markers (cities) — popup on hover, not click
-  CONFIG.route.forEach(w => {
-    const cls = 'waypoint-marker'
-      + (w.role === 'start'  ? ' start'  : '')
-      + (w.role === 'finish' ? ' finish' : '');
-    const icon = L.divIcon({
-      className: '',
-      html: `<div class="${cls}"></div>`,
-      iconSize: [14, 14],
-      iconAnchor: [7, 7],
-    });
-    const marker = L.marker([w.lat, w.lng], { icon, riseOnHover: true })
-      .addTo(leafletMap)
-      .bindPopup(`
-        <h4>${w.name}</h4>
-        <div class="miles">Mile ${w.mile}${w.role === 'finish' ? ' — Finish' : ''}</div>
-        <p>${w.fact}</p>
-      `, { closeButton: false, autoPan: false });
-
-    // Open popup on HOVER, not click (per spec)
-    marker.on('mouseover', () => marker.openPopup());
-    marker.on('mouseout',  () => marker.closePopup());
-  });
+  // (Waypoint city markers removed — only sponsorable pixels live on the map.)
 
   // Animated runner marker (driven by scrubber/scroll)
   const runnerIcon = L.divIcon({
