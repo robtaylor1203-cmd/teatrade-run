@@ -2341,10 +2341,13 @@ button { font-family: inherit; }
   overflow: hidden;
 }
 .about-image img {
+  display: block;
   width: 100%;
+  height: auto; /* Fallback for Safari so it doesn't collapse to 0 height */
   aspect-ratio: 4 / 5;
   object-fit: cover;
   border-radius: calc(var(--radius-lg) - 4px);
+  min-height: 1px; /* Forces Safari to acknowledge the image exists */
 }
 .about-caption {
   font-size: 0.78rem;
