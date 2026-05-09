@@ -2209,6 +2209,86 @@ button { font-family: inherit; }
   }
 }
 
+/* =============================================================
+   FAQ SECTION (Split Layout)
+   ============================================================= */
+.faq-section {
+  padding: 80px 0 100px;
+  background: var(--bg);
+  position: relative;
+  z-index: 10; /* Ensures it sits neatly under the map as you scroll out */
+}
+.faq-accordion {
+  flex: 1;
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.faq-item {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  transition: box-shadow .2s ease, border-color .2s ease;
+  overflow: hidden;
+}
+.faq-item:hover {
+  box-shadow: var(--shadow);
+  border-color: rgba(0,0,0,0.08);
+}
+.faq-item summary {
+  padding: 22px 24px;
+  font-weight: 500;
+  font-size: 1.05rem;
+  color: var(--text);
+  cursor: pointer;
+  list-style: none; /* Hides the ugly default browser triangle */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.faq-item summary::-webkit-details-marker {
+  display: none; /* Extra rule to hide triangle in Safari */
+}
+
+/* Custom + / - icon */
+.faq-item summary::after {
+  content: "+";
+  font-size: 1.5rem;
+  font-weight: 300;
+  color: var(--muted);
+  line-height: 1;
+  transition: transform .25s ease;
+}
+.faq-item[open] summary::after {
+  content: "−"; /* Em dash for a clean minus sign */
+  color: var(--accent-orange);
+}
+
+.faq-item__content {
+  padding: 0 24px 24px;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  border-top: 1px solid transparent;
+}
+.faq-item__content p {
+  margin-bottom: 12px;
+}
+.faq-item__content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Make the FAQ title orange when expanded */
+.faq-item[open] summary {
+  color: var(--accent-orange);
+}
+
+/* Optional: Add a smooth fade to the color change */
+.faq-item summary {
+  transition: color 0.2s ease;
+}
+
 </style>
 </head>
 <body>
@@ -2427,6 +2507,57 @@ button { font-family: inherit; }
         <span><span class="swatch" style="background: var(--text);"></span>Corporate</span>
         <span><span class="swatch" style="background: var(--accent);"></span>Premium</span>
         <span><span class="swatch" style="background: var(--gold);"></span>Start &amp; Finish</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="faq-section" id="faq">
+  <div class="container">
+    <div class="hero-flex">
+      
+      <div class="hero-left" style="max-width: 420px;">
+        <div class="eyebrow" style="color:var(--accent-orange); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:6px; font-weight:500;">
+          The Logistics
+        </div>
+        <h2 class="hero-title" style="font-size: clamp(2rem, 5vw, 3.2rem);">
+          Frequently asked<br><strong>questions</strong>.
+        </h2>
+        <p class="hero-lede" style="font-size: 0.95rem;">
+          Everything you need to know about the route, the timeline, and how your donations support the two charities.
+        </p>
+      </div>
+
+      <div class="faq-accordion">
+        
+        <details class="faq-item" name="faq" open>
+          <summary>Are you running this non-stop or sleeping?</summary>
+          <div class="faq-item__content">
+            <p>I will be running this non-stop, as soon as the first step is taken, I won't be stopping until I reach the finish line. I am giving a conservative run-time of 48 hours, although I may revise this down depending on training.</p>
+          </div>
+        </details>
+
+        <details class="faq-item" name="faq">
+          <summary>Can I come and run a mile with you?</summary>
+          <div class="faq-item__content">
+            <p>Absolutely. If the route passes near you, I would love the company. Nearer the time, I will be publishing a live tracker so you can see exactly where I am on the road. If you would like to reach out, hit the contact us at the bottom of this page!</p>
+          </div>
+        </details>
+
+        <details class="faq-item" name="faq">
+          <summary>How is the money split between the charities?</summary>
+          <div class="faq-item__content">
+            <p>Every single penny donated through this site goes into a locked Enthuse pot, which is then automatically split 50/50 between Alzheimer's Research UK and the UK Tea Trade Benevolent Society. The run itself is entirely self-funded.</p>
+          </div>
+        </details>
+
+        <details class="faq-item" name="faq">
+          <summary>Can my company sponsor a mile?</summary>
+          <div class="faq-item__content">
+            <p>Yes! When you click 'Sponsor a Mile', simply select the 'Business' option. You can upload your company logo, which will permanently appear on the map pixel and in the sponsor grid for everyone to see.</p>
+          </div>
+        </details>
+
       </div>
     </div>
   </div>
