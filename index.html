@@ -2119,6 +2119,96 @@ button { font-family: inherit; }
   margin-top: 12px;
 }
 
+/* Sticky Orb Icon: £ on desktop, > on mobile */
+.raised-orb__expand::before {
+  content: "£";
+  font-size: 1.3rem; 
+}
+@media (max-width: 720px) {
+  .raised-orb__expand::before {
+    content: ">";
+    font-size: 1.1rem;
+  }
+}
+
+/* Force hide the 'Map actions' toggle button on desktop */
+@media (min-width: 721px) {
+  .action-stack__toggle {
+    display: none !important;
+  }
+}
+
+/* Swap the grid from 19x10 to 10x19 on mobile screens */
+@media (max-width: 720px) {
+  .miles-grid {
+    grid-template-columns: repeat(10, var(--mile-cell)) !important;
+    grid-template-rows: repeat(19, var(--mile-cell)) !important;
+  }
+}
+
+/* =============================================================
+   OVERRIDE: HERO CHARITY CARDS (Bigger & More Purposeful)
+   ============================================================= */
+/* 1. Widen the column to give the text room to breathe */
+.hero-charities {
+  width: 360px !important;
+  gap: 14px !important;
+}
+
+/* 2. Re-align the "Track the Training" button to match the new 360px width */
+@media (min-width: 901px) {
+  .btn-track {
+    margin-right: calc(-360px - 56px) !important;
+  }
+}
+
+/* 3. Chunky up the cards and add a default subtle lift */
+.charity-mini {
+  padding: 22px 24px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.04) !important;
+  border-color: rgba(0,0,0,0.08) !important; /* Slightly more defined border */
+}
+.charity-mini:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 12px 24px rgba(0,0,0,0.1) !important;
+  border-color: transparent !important;
+}
+
+/* 4. Increase the charity name size to feel like a proper headline */
+.charity-mini__name {
+  font-size: 1.15rem !important;
+}
+
+/* 5. Make the description text slightly larger and easier to read */
+.charity-mini__tag {
+  margin-top: 8px !important;
+  font-size: 0.92rem !important;
+  line-height: 1.45 !important;
+}
+
+/* 6. Make the "Supporting" label slightly more prominent */
+.hero-charities__label {
+  font-size: 0.78rem !important;
+  margin-bottom: 4px !important;
+}
+
+/* 7. Mobile adjustments so the bigger cards still fit side-by-side */
+@media (max-width: 720px) {
+  .hero-charities {
+    width: 100% !important;
+    gap: 12px !important;
+  }
+  .charity-mini {
+    padding: 16px 14px !important;
+  }
+  .charity-mini__name {
+    font-size: 1.05rem !important;
+  }
+  .charity-mini__tag {
+    font-size: 0.85rem !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -2347,7 +2437,7 @@ button { font-family: inherit; }
      ===================================================== -->
 <aside class="raised-orb" id="raisedOrb" role="region" aria-label="Total raised">
   <button class="raised-orb__circle" id="raisedOrbToggle" aria-expanded="true" aria-controls="raisedOrbPanel" aria-label="Expand total raised">
-    <span class="raised-orb__expand" aria-hidden="true">&gt;</span>
+    <span class="raised-orb__expand" aria-hidden="true"></span>
     <span class="raised-orb__ring" aria-hidden="true"></span>
   </button>
   <div class="raised-orb__panel" id="raisedOrbPanel">
@@ -3121,13 +3211,18 @@ function updateMilesGridSize() {
   const grid = document.getElementById('milesGrid');
   if (!wrap || !grid) return;
 
-  const gap = window.matchMedia('(max-width: 720px)').matches ? 3 : 6;
+  // Check if we are on a mobile screen
+  const isMobile = window.matchMedia('(max-width: 720px)').matches;
+  const gap = isMobile ? 3 : 6;
+  const cols = isMobile ? 10 : 19; // Swap to 10 columns on mobile
+  const rows = isMobile ? 19 : 10; // Swap to 19 rows on mobile
+  
   const availW = Math.max(0, wrap.clientWidth);
   const availH = Math.max(0, wrap.clientHeight);
   if (!availW || !availH) return;
 
-  const byWidth = (availW - (18 * gap)) / 19;
-  const byHeight = (availH - (9 * gap)) / 10;
+  const byWidth = (availW - ((cols - 1) * gap)) / cols;
+  const byHeight = (availH - ((rows - 1) * gap)) / rows;
   const cell = Math.max(9, Math.floor(Math.min(byWidth, byHeight)));
   grid.style.setProperty('--mile-cell', `${cell}px`);
 }
@@ -3172,15 +3267,20 @@ function buildMilesGrid() {
       block.setAttribute('aria-label', `Mile ${i} — available to sponsor`);
     }
 
-    // Flip tooltip downward for the top three rows (miles 1–57) so it
-    // doesn't get clipped by the panel header.
-    const row = Math.ceil(i / 19);
-    if (row <= 3) block.classList.add('mile--flip');
-    // Anchor tooltip to the cell edge for the leftmost / rightmost
-    // columns so the wide card never overflows the panel.
-    const col = ((i - 1) % 19) + 1;
-    if (col <= 5)        block.classList.add('mile--edge-left');
-    else if (col >= 15)  block.classList.add('mile--edge-right');
+// Check screen size for tooltip anchor logic
+    const isMobile = window.matchMedia('(max-width: 720px)').matches;
+    const cols = isMobile ? 10 : 19;
+
+    // Flip tooltip downward for the top rows so it doesn't get clipped
+    // (Top 3 rows on desktop, Top 4 rows on mobile)
+    const row = Math.ceil(i / cols);
+    if (row <= (isMobile ? 4 : 3)) block.classList.add('mile--flip');
+    
+    // Anchor tooltip to the cell edge for the leftmost / rightmost columns
+    // Desktop thresholds increased to 8 and 12 to safely contain the wide card
+    const col = ((i - 1) % cols) + 1;
+    if (col <= (isMobile ? 3 : 8))        block.classList.add('mile--edge-left');
+    else if (col >= (isMobile ? 8 : 12))  block.classList.add('mile--edge-right');
 
     // Wide hover card (logo + sponsor details + message). Same markup
     // as the Leaflet pixel tooltip so the two views stay in sync.
@@ -3245,7 +3345,7 @@ function setupMilePreviewModal() {
 
   function close() { modal.classList.remove('is-open'); }
 
-  openMilePreviewModal = function (mileNum, sponsor, tier) {
+openMilePreviewModal = function (mileNum, sponsor, tier) {
     const availableTier = sponsor ? null : tier;
     body.innerHTML = sponsorCardHTML(mileNum, sponsor, availableTier);
 
@@ -3253,15 +3353,21 @@ function setupMilePreviewModal() {
       eyebrow.textContent = `Mile ${mileNum} · Sponsored`;
       title.textContent = sponsor.sponsor;
       actions.innerHTML = '';
+      // Reset colors for already-sponsored miles
+      modal.classList.remove('is-premium', 'is-featured'); 
     } else {
       const price = tier === 'premium'
         ? CONFIG.premiumPrice
         : tier === 'featured'
           ? CONFIG.featuredPrice
           : CONFIG.milePrice;
-      eyebrow.textContent = `Mile ${mileNum} · Available`;
-      title.textContent = `Sponsor mile ${mileNum}`;
+          
+      // Give the title the <strong> tags so the CSS can target it
+      eyebrow.textContent = tier === 'premium' ? `Mile ${mileNum} · Start & Finish` : tier === 'featured' ? `Mile ${mileNum} · Premium` : `Mile ${mileNum} · Available`;
+      title.innerHTML = tier === 'premium' ? `Sponsor a <strong>start &amp; finish</strong> mile.` : tier === 'featured' ? `Sponsor a <strong>premium</strong> mile.` : `Sponsor mile ${mileNum}`;
+      
       actions.innerHTML = `<button type="button" class="btn btn-primary" id="milePreviewSponsorBtn">Sponsor this mile · £${price}</button>`;
+      
       const sponsorBtn = document.getElementById('milePreviewSponsorBtn');
       if (sponsorBtn) {
         sponsorBtn.addEventListener('click', () => {
@@ -3269,6 +3375,10 @@ function setupMilePreviewModal() {
           openSponsorModal(mileNum, tier || 'standard');
         });
       }
+
+      // Turn on the Gold (premium) or Blue (featured) theme!
+      modal.classList.toggle('is-premium', tier === 'premium');
+      modal.classList.toggle('is-featured', tier === 'featured');
     }
     modal.classList.add('is-open');
   };
