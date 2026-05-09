@@ -75,6 +75,35 @@ button { font-family: inherit; }
 .container { max-width: var(--maxw); margin: 0 auto; padding: 0 32px; }
 
 /* =============================================================
+   PREMIUM FEEL: Smooth Scroll & Custom Scrollbar
+   ============================================================= */
+html {
+  scroll-behavior: smooth;
+}
+
+/* For Chrome, Safari, and Edge */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: #e0e0e0; /* Subtle light grey */
+  border-radius: 10px;
+  border: 2px solid var(--bg); /* Creates a little "gap" around the thumb */
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-orange); /* Turns orange when you scroll */
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #e0e0e0 var(--bg);
+}
+
+/* =============================================================
    HEADER — fixed top, auto-hides on scroll-down, returns on
    scroll-up. Sits above the map and Leaflet controls.
    ============================================================= */
