@@ -2292,7 +2292,7 @@ button { font-family: inherit; }
 /* =============================================================
    MOBILE FIXES: Map Height & Scrubber Positions
    ============================================================= */
-@media (max-width: 720px) {
+@media (max-width: 1024px) {
   /* Use dynamic viewport height so it doesn't hide behind mobile toolbars */
   .map-shell {
     height: 100dvh !important;
@@ -3157,14 +3157,14 @@ function setupMap() {
   // Pre-compute cumulative distances for fast point-along-route lookup
   recomputeRouteMetrics();
 
-// Check if screen is mobile-sized
-  const isMobile = window.matchMedia('(max-width: 720px)').matches;
+// Ask the browser directly if this is a touch device (covers all phones and iPads regardless of size)
+  const isTouchDevice = window.matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
   leafletMap = L.map('map', {
     zoomControl: true,
     scrollWheelZoom: false, 
-    dragging: !isMobile,    // <--- FIX: Only disables dragging on mobile
-    touchZoom: !isMobile,   // <--- FIX: Only disables touch-zoom on mobile
+    dragging: !isTouchDevice,    // <--- FIX: Disables map dragging on all touchscreens
+    touchZoom: !isTouchDevice,   // <--- FIX: Disables pinch-zoom on all touchscreens
     attributionControl: true,
     zoomSnap: 0.5,
   }).setView(routeLatLngs[0], CONFIG.mapZoom);
