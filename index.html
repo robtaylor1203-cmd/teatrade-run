@@ -2382,6 +2382,28 @@ button { font-family: inherit; }
   }
 }
 
+/* =============================================================
+   MOBILE OVERRIDE: Center Countdown Box Properly
+   ============================================================= */
+@media (max-width: 720px) {
+  /* 1. Turn the container into a natural vertical stack */
+  .countdown-inner {
+    display: flex !important;
+    flex-direction: column !important;
+    padding-top: 16px !important; /* Removes the old 80px hack */
+  }
+
+  /* 2. Un-float the title so it takes up physical space in the layout */
+  .countdown__title-block {
+    position: static !important;
+  }
+
+  /* 3. Apply perfectly even margins above and below the box to center it */
+  .countdown-callout {
+    margin: 24px 0 !important; 
+  }
+}
+
 </style>
 </head>
 <body>
