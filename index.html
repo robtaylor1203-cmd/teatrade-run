@@ -2407,6 +2407,63 @@ button { font-family: inherit; }
   }
 }
 
+/* =============================================================
+   ULTRA-MINIMAL FOOTER & MODALS
+   ============================================================= */
+.site-footer {
+  border-top: 1px solid var(--hairline);
+  padding: 24px 0;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.85rem;
+  position: relative;
+  z-index: 10;
+}
+.footer-single-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap; 
+  gap: 16px;
+}
+.footer-btn, .footer-link {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s ease;
+}
+.footer-btn:hover, .footer-link:hover {
+  color: var(--accent-orange);
+}
+.footer-divider {
+  margin: 0 8px;
+  opacity: 0.4;
+}
+
+/* Modal Z-Index Fix */
+.sponsor-modal {
+  z-index: 9999 !important; /* Forces it above the map */
+}
+.sponsor-modal.is-open {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+@media (max-width: 720px) {
+  .footer-single-line {
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -3010,7 +3067,49 @@ button { font-family: inherit; }
   </div>
 </div>
 
+<footer class="site-footer">
+  <div class="container footer-single-line">
+    <div class="footer-left">© 2026 TeaTrade Run</div>
+    <div class="footer-right">
+      <a href="https://teatrade.co.uk" target="_blank" rel="noopener noreferrer" class="footer-link">TeaTrade</a>
+      <span class="footer-divider">·</span>
+      <button class="footer-btn" id="openContact">Contact</button>
+      <span class="footer-divider">·</span>
+      <button class="footer-btn" id="openLegal">Legal & Charities</button>
+    </div>
+  </div>
+</footer>
+
+<div class="sponsor-modal" id="contactModal" role="dialog" aria-modal="true">
+  <div class="sponsor-glass" style="max-width: 400px; text-align: center;">
+    <button class="sponsor-glass__close" id="closeContact" aria-label="Close">×</button>
+    <div class="eyebrow">Get in touch</div>
+    <h3>Contact <strong>RunTeaTrade</strong>.</h3>
+    <p class="lede" style="margin-bottom: 24px;">For corporate sponsorships, press, or just to ask about the run, drop me an email.</p>
+    <a href="mailto:contact@teatrade.co.uk" class="btn btn-primary" style="width: 100%; justify-content: center;">
+      contact@teatrade.co.uk
+    </a>
+  </div>
+</div>
+
+<div class="sponsor-modal" id="legalModal" role="dialog" aria-modal="true">
+  <div class="sponsor-glass" style="max-width: 500px;">
+    <button class="sponsor-glass__close" id="closeLegal" aria-label="Close">×</button>
+    <div class="eyebrow">The Details</div>
+    <h3>Legal & <strong>Charities</strong>.</h3>
+    <div class="prose" style="font-size: 0.95rem; margin-top: 16px; color: var(--muted);">
+      <p style="margin-bottom: 12px;"><strong>Charity Registration:</strong><br>
+      Alzheimer's Research UK is a registered charity (1077089 & SC042474).<br>
+      UK Tea Trade Benevolent Society is a registered charity (275069).</p>
+      <p><strong>Privacy & Data:</strong><br>
+      We do not store or see your payment details; all transactions are securely processed by Enthuse. Your email is only used for updates regarding this run.</p>
+    </div>
+  </div>
+</div>
+
 <script>
+
+
 
 /* ================================================================
    PASSWORD PROTECTION
@@ -3118,6 +3217,45 @@ const CONFIG = {
     { pixel: 185, sponsor: "Greenwich Gazette",    initials: "GG", logoBg: "#3a5a40", amount: 75,   tier: "standard",  message: "Final push! See you at the Sark." },
   ],
 };
+
+/* ================================================================
+   FOOTER MODALS LOGIC
+   ================================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  const contactModal = document.getElementById('contactModal');
+  const legalModal = document.getElementById('legalModal');
+  
+  document.getElementById('openContact')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    contactModal?.classList.add('is-open');
+  });
+  
+  document.getElementById('openLegal')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    legalModal?.classList.add('is-open');
+  });
+
+  const closeContact = () => contactModal?.classList.remove('is-open');
+  const closeLegal = () => legalModal?.classList.remove('is-open');
+
+  document.getElementById('closeContact')?.addEventListener('click', closeContact);
+  document.getElementById('closeLegal')?.addEventListener('click', closeLegal);
+
+  // Close when clicking the dark background overlay
+  [contactModal, legalModal].forEach(modal => {
+    modal?.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('is-open');
+    });
+  });
+
+  // Close on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeContact();
+      closeLegal();
+    }
+  });
+});
 
 /* ================================================================
    1. Total Raised — animated count-up + bar
