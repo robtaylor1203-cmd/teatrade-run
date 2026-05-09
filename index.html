@@ -131,6 +131,9 @@ button { font-family: inherit; }
   overflow: hidden;
   border-bottom: 1px solid var(--hairline);
 }
+@media (max-width: 720px) {
+  .hero { padding: calc(var(--header-h) + 28px) 0 42px; }
+}
 .hero-flex {
   display: flex;
   align-items: flex-start;
@@ -177,6 +180,30 @@ button { font-family: inherit; }
   .btn-track { margin-right: 0; }
 }
 .btn-track svg { width: 16px; height: 16px; }
+.btn-track__label-short { display: none; }
+@media (max-width: 720px) {
+  .hero-route .route-row {
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+  .hero-route .route {
+    min-width: 0;
+    font-size: 0.88rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .btn-track {
+    margin-left: 0;
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .btn-track svg { width: 14px; height: 14px; }
+  .btn-track__label-full { display: none; }
+  .btn-track__label-short { display: inline; }
+}
 .hero-route .eyebrow {
   font-size: 0.72rem;
   color: var(--muted);
@@ -208,7 +235,8 @@ button { font-family: inherit; }
   padding-top: 96px;
 }
 @media (max-width: 720px) {
-  .countdown-inner { padding: 12px 20px 0; padding-top: 96px; }
+  .countdown { padding: 20px 0 24px; }
+  .countdown-inner { padding: 8px 14px 0; padding-top: 80px; }
 }
 
 .countdown__title-block {
@@ -218,7 +246,9 @@ button { font-family: inherit; }
   max-width: 360px;
 }
 @media (max-width: 720px) {
-  .countdown__title-block { left: 20px; right: 20px; max-width: none; }
+  .countdown__title-block { left: 14px; right: 14px; max-width: none; }
+  .countdown__eyebrow { margin-bottom: 4px; }
+  .countdown__title { font-size: clamp(1.05rem, 4.8vw, 1.28rem); }
 }
 .countdown__eyebrow {
   font-size: 0.72rem;
@@ -252,7 +282,19 @@ button { font-family: inherit; }
   overflow: hidden;
 }
 @media (max-width: 720px) {
-  .countdown-callout { position: static; width: 100%; margin-top: 14px; }
+  .countdown-callout {
+    position: static;
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .countdown-callout .days { font-size: 1.55rem; }
+  .countdown-callout .days-lbl { font-size: 0.62rem; }
+  .countdown-callout .date { font-size: 0.8rem; }
+  .countdown-bar { height: 8px; }
+  .countdown-bar__marker { width: 18px; height: 18px; border-width: 2px; }
+  .countdown-labels { margin-top: 9px; font-size: 0.72rem; }
 }
 
 .countdown-callout .days {
@@ -438,7 +480,34 @@ button { font-family: inherit; }
   font-size: 0.78rem;
   color: var(--muted);
 }
-.map-legend > span { display: inline-flex; align-items: center; }
+.map-legend__toggle {
+  display: none;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+  padding: 0;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.map-legend__chevron {
+  width: 8px;
+  height: 8px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform .16s ease;
+}
+.map-legend.is-collapsed .map-legend__chevron { transform: rotate(-45deg); }
+.map-legend__content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+.map-legend__content > span { display: inline-flex; align-items: center; }
 .map-legend__dot {
   width: 10px; height: 10px;
   border-radius: 50%;
@@ -455,7 +524,25 @@ button { font-family: inherit; }
 .map-legend__dot--premium   { background: var(--gold); }
 .map-legend__dot--featured  { background: var(--accent); }
 @media (max-width: 720px) {
-  .map-legend { font-size: 0.72rem; padding: 6px 12px; gap: 10px; }
+  .map-legend {
+    top: calc(var(--header-h) + 62px);
+    left: 12px;
+    max-width: calc(100vw - 24px);
+    border-radius: 16px;
+    font-size: 0.72rem;
+    padding: 8px 12px;
+    gap: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .map-legend__toggle {
+    display: inline-flex;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .map-legend__content { width: 100%; gap: 9px 12px; }
+  .map-legend.is-collapsed .map-legend__content { display: none; }
 }
 .route-pill .dotO,
 .route-pill .dotB {
@@ -477,8 +564,38 @@ button { font-family: inherit; }
   gap: 10px;
   align-items: flex-end;
 }
+.action-stack__toggle { display: none; }
+.action-stack__items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+}
 @media (max-width: 720px) {
-  .action-stack { right: 12px; top: calc(var(--header-h) + 10px); }
+  .action-stack {
+    right: 12px;
+    top: calc(var(--header-h) + 62px);
+    align-items: stretch;
+  }
+  .action-stack__toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: flex-end;
+    font-size: 0.82rem;
+    padding: 10px 15px;
+  }
+  .action-stack__items {
+    gap: 8px;
+    align-items: stretch;
+  }
+  .action-stack__items .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 10px 16px;
+    font-size: 0.84rem;
+  }
+  .action-stack.is-collapsed .action-stack__items { display: none; }
 }
 
 .btn {
@@ -701,13 +818,13 @@ button { font-family: inherit; }
 }
 .miles-grid {
   display: grid;
-  /* 19 × 10 = 190 cells; aspect-ratio + 1fr cols/rows let cells
-     fill the available space with square cells. */
-  grid-template-columns: repeat(19, 1fr);
-  grid-template-rows: repeat(10, 1fr);
-  gap: 6px;
-  aspect-ratio: 19 / 10;
-  width: 100%;
+  --mile-gap: 6px;
+  --mile-cell: 18px;
+  grid-template-columns: repeat(19, var(--mile-cell));
+  grid-template-rows: repeat(10, var(--mile-cell));
+  gap: var(--mile-gap);
+  width: fit-content;
+  height: fit-content;
   max-width: 100%;
   max-height: 100%;
 }
@@ -893,6 +1010,128 @@ button { font-family: inherit; }
   margin-right: 6px;
 }
 
+/* Mile click preview modal (larger than in-grid hover cards). */
+.mile-preview {
+  width: min(560px, 100%);
+}
+.mile-preview__body .sponsor-card {
+  width: 100%;
+  gap: 16px;
+}
+.mile-preview__body .sponsor-card__logo {
+  width: 110px;
+  height: 110px;
+  border-radius: 12px;
+}
+.mile-preview__body .sponsor-card__name {
+  font-size: 1.1rem;
+  line-height: 1.22;
+}
+.mile-preview__body .sponsor-card__msg {
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.mile-preview__actions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+}
+.mile-preview__actions .btn {
+  min-width: 180px;
+  justify-content: center;
+}
+
+@media (max-width: 720px) {
+  .mile-panel {
+    padding: 14px 12px 10px;
+  }
+  .mile-panel__head {
+    position: relative;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .mile-panel__intro {
+    min-width: 0;
+    padding-right: 38px; /* reserve room for close button */
+  }
+  .mile-panel__head h2 {
+    font-size: clamp(1.05rem, 7vw, 1.25rem);
+    margin-bottom: 2px;
+  }
+  .mile-panel__head p {
+    font-size: 0.76rem;
+    line-height: 1.32;
+    max-width: none;
+  }
+  .mile-panel__close {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 32px;
+    height: 32px;
+    font-size: 1.05rem;
+  }
+  .mile-stats {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    align-items: start;
+  }
+  .mile-stat { min-width: 0; }
+  .mile-stat .num {
+    font-size: 1.02rem;
+    line-height: 1.1;
+  }
+  .mile-stat .lbl {
+    font-size: 0.56rem;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+  .mile-stats .mile-stat:last-child .lbl {
+    font-size: 0.5rem;
+    letter-spacing: 0.03em;
+  }
+  .mile-grid-wrap {
+    padding: 6px;
+    border-radius: 12px;
+  }
+  .miles-grid { --mile-gap: 3px; }
+  .mile { font-size: 0.56rem; }
+  .mile-panel__legend {
+    margin-top: 8px;
+    gap: 8px 10px;
+    font-size: 0.72rem;
+  }
+  .mile-panel__legend .swatch {
+    width: 10px;
+    height: 10px;
+    margin-right: 4px;
+  }
+  .mile-preview__body .sponsor-card {
+    gap: 12px;
+  }
+  .mile-preview__body .sponsor-card__logo {
+    width: 84px;
+    height: 84px;
+  }
+  .mile-preview__body .sponsor-card__name {
+    font-size: 0.96rem;
+  }
+  .mile-preview__body .sponsor-card__msg {
+    font-size: 0.82rem;
+    line-height: 1.38;
+  }
+  .mile-preview__actions {
+    margin-top: 10px;
+  }
+  .mile-preview__actions .btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
 /* --- Leaflet markers / pixels / popups --------------------------- */
 
 /* Waypoint pin (city / start / finish) */
@@ -1041,6 +1280,15 @@ button { font-family: inherit; }
   transition: transform .15s ease, box-shadow .15s ease;
 }
 .raised-orb__circle:hover { transform: scale(1.05); box-shadow: 0 8px 26px rgba(245,102,0,.5); }
+.raised-orb__expand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 1.1rem;
+  font-weight: 500;
+  transform: translateX(-1px);
+}
 .raised-orb__sym {
   font-size: 1.6rem;
   font-weight: 500;
@@ -1136,7 +1384,23 @@ button { font-family: inherit; }
   font-weight: 500;
 }
 @media (max-width: 720px) {
-  .raised-orb { bottom: 12px; left: 12px; }
+  .raised-orb {
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .raised-orb.is-collapsed {
+    left: 0;
+    transform: none;
+  }
+  .raised-orb.is-collapsed .raised-orb__circle {
+    width: 30px;
+    height: 64px;
+    border-radius: 0 20px 20px 0;
+    border-left: 0;
+    box-shadow: 0 6px 20px rgba(245,102,0,.35);
+  }
+  .raised-orb.is-collapsed .raised-orb__ring { display: none; }
   .raised-orb__panel { width: calc(100vw - 32px); }
 }
 
@@ -1208,6 +1472,38 @@ button { font-family: inherit; }
 }
 @media (max-width: 880px) {
   .hero-charities { width: 100%; }
+}
+@media (max-width: 720px) {
+  .hero-charities {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .hero-charities__label { grid-column: 1 / -1; margin-bottom: 0; }
+  .charity-mini {
+    min-height: 0;
+    aspect-ratio: 1 / 1;
+    padding: 10px 11px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+  .charity-mini__row {
+    align-items: flex-start;
+    gap: 7px;
+  }
+  .charity-mini__name {
+    font-size: 1rem;
+    line-height: 1.16;
+    letter-spacing: -0.01em;
+  }
+  .charity-mini__arrow { display: none; }
+  .charity-mini__tag {
+    margin-top: 7px;
+    font-size: 0.8rem;
+    line-height: 1.28;
+    color: #5f6368;
+  }
 }
 
 /* =============================================================
@@ -1894,7 +2190,7 @@ button { font-family: inherit; }
           <div class="route-row">
             <div class="route">Peterston <svg style="width:12px;height:12px;color:var(--muted);vertical-align:-1px; transform: rotate(45deg);"><use href="#i-arrow"/></svg> Greenwich · <strong>190 mi</strong></div>
             <button class="btn btn-primary btn-track" id="trackTrainingBtn" type="button">
-              <svg><use href="#i-runner"/></svg> Track the Training
+              <svg><use href="#i-runner"/></svg> <span class="btn-track__label-full">Track the Training</span><span class="btn-track__label-short">Track</span>
             </button>
           </div>
         </div>
@@ -1906,17 +2202,15 @@ button { font-family: inherit; }
           <div class="charity-mini__row">
             <span class="charity-mini__dot"></span>
             <span class="charity-mini__name">Alzheimer's Research UK</span>
-            <svg class="charity-mini__arrow"><use href="#i-arrow"/></svg>
           </div>
-          <p class="charity-mini__tag">The UK's leading dementia charity</p>
+          <p class="charity-mini__tag">Funding research breakthroughs to diagnose, treat and prevent dementia.</p>
         </button>
         <button class="charity-mini charity-mini--ukttbs" data-charity="ukttbs" type="button">
           <div class="charity-mini__row">
             <span class="charity-mini__dot"></span>
             <span class="charity-mini__name">UK Tea Trade Benevolent Society</span>
-            <svg class="charity-mini__arrow"><use href="#i-arrow"/></svg>
           </div>
-          <p class="charity-mini__tag">The safety net of our industry</p>
+          <p class="charity-mini__tag">Providing practical, emotional and financial support across the tea trade.</p>
         </button>
       </aside>
     </div>
@@ -1966,7 +2260,7 @@ button { font-family: inherit; }
     <!-- Top-left: route summary -->
     <div class="map-overlay route-pill">
       <span><span class="dotO"></span> <strong>Peterston</strong></span>
-      <span class="arrow">———</span>
+      <span class="arrow"><svg style="width:11px;height:11px;vertical-align:-1px; transform: rotate(45deg);"><use href="#i-arrow"/></svg></span>
       <span><strong>Cutty Sark</strong> <span class="dotB"></span></span>
       <span class="arrow">·</span>
       <span><strong>190 mi</strong></span>
@@ -1975,18 +2269,26 @@ button { font-family: inherit; }
     <!-- Top-left, under route pill: dot-color legend (mirrors the
          Sponsor-a-Mile panel legend so visitors can decode the map). -->
     <div class="map-overlay map-legend" aria-label="Map legend">
-      <span><span class="map-legend__dot map-legend__dot--available"></span>Available</span>
-      <span><span class="map-legend__dot map-legend__dot--sponsored"></span>Sponsored</span>
-      <span><span class="map-legend__dot map-legend__dot--corporate"></span>Corporate</span>
-      <span><span class="map-legend__dot map-legend__dot--featured"></span>Premium</span>
-      <span><span class="map-legend__dot map-legend__dot--premium"></span>Start &amp; Finish</span>
+      <button class="map-legend__toggle" id="mapLegendToggle" type="button" aria-expanded="false" aria-controls="mapLegendContent">
+        Map key <span class="map-legend__chevron" aria-hidden="true"></span>
+      </button>
+      <div class="map-legend__content" id="mapLegendContent">
+        <span><span class="map-legend__dot map-legend__dot--available"></span>Available</span>
+        <span><span class="map-legend__dot map-legend__dot--sponsored"></span>Sponsored</span>
+        <span><span class="map-legend__dot map-legend__dot--corporate"></span>Corporate</span>
+        <span><span class="map-legend__dot map-legend__dot--featured"></span>Premium</span>
+        <span><span class="map-legend__dot map-legend__dot--premium"></span>Start &amp; Finish</span>
+      </div>
     </div>
 
     <!-- Top-right: primary actions -->
     <div class="map-overlay action-stack">
-      <button class="btn btn-primary" id="claimOpenBtn">Sponsor a Mile</button>
-      <button class="btn btn-blue" id="donateBtn" type="button">Donate Any Amount</button>
-      <button class="btn btn-ghost" id="caffeineBtn"><svg><use href="#i-coffee"/></svg> Caffeine Boost</button>
+      <button class="btn btn-ghost action-stack__toggle" id="mapActionsToggle" type="button" aria-expanded="false" aria-controls="mapActionsContent">Map actions</button>
+      <div class="action-stack__items" id="mapActionsContent">
+        <button class="btn btn-primary" id="claimOpenBtn">Sponsor a Mile</button>
+        <button class="btn btn-blue" id="donateBtn" type="button">Donate Any Amount</button>
+        <button class="btn btn-ghost" id="caffeineBtn"><svg><use href="#i-coffee"/></svg> Caffeine Boost</button>
+      </div>
     </div>
 
     <!-- Bottom-center: route scrubber driven by page scroll -->
@@ -2006,7 +2308,7 @@ button { font-family: inherit; }
         <span>Peterston, Wales</span>
         <span>Cutty Sark, London</span>
       </div>
-      <div class="scrubber__hint">Drag the slider, or scroll — hover any mile to see who's sponsored, click an empty one to claim it</div>
+      <div class="scrubber__hint">Drag the slider, or scroll</div>
     </div>
 
     <!-- Slide-up "Sponsor a Mile" panel -->
@@ -2044,8 +2346,8 @@ button { font-family: inherit; }
      STICKY "TOTAL RAISED" CIRCLE — collapsed-by-default
      ===================================================== -->
 <aside class="raised-orb" id="raisedOrb" role="region" aria-label="Total raised">
-  <button class="raised-orb__circle" id="raisedOrbToggle" aria-expanded="true" aria-controls="raisedOrbPanel">
-    <span class="raised-orb__sym">£</span>
+  <button class="raised-orb__circle" id="raisedOrbToggle" aria-expanded="true" aria-controls="raisedOrbPanel" aria-label="Expand total raised">
+    <span class="raised-orb__expand" aria-hidden="true">&gt;</span>
     <span class="raised-orb__ring" aria-hidden="true"></span>
   </button>
   <div class="raised-orb__panel" id="raisedOrbPanel">
@@ -2304,6 +2606,19 @@ button { font-family: inherit; }
       <div class="teacup__handle"></div>
     </div>
     <button class="btn btn-primary" id="caffeineDonateBtn"><svg><use href="#i-tea"/></svg> Donate £5 to fuel a mile</button>
+  </div>
+</div>
+
+<!-- =====================================================
+     MILE DETAIL PREVIEW MODAL
+     ===================================================== -->
+<div class="sponsor-modal" id="milePreviewModal" role="dialog" aria-modal="true" aria-labelledby="milePreviewTitle">
+  <div class="sponsor-glass mile-preview">
+    <button class="sponsor-glass__close" id="milePreviewClose" aria-label="Close">×</button>
+    <div class="eyebrow" id="milePreviewEyebrow">Mile detail</div>
+    <h3 id="milePreviewTitle">Mile preview</h3>
+    <div class="mile-preview__body" id="milePreviewBody"></div>
+    <div class="mile-preview__actions" id="milePreviewActions"></div>
   </div>
 </div>
 
@@ -2801,6 +3116,22 @@ function setupScrollyMap() {
   setTimeout(update, 350);
 }
 
+function updateMilesGridSize() {
+  const wrap = document.querySelector('.mile-grid-wrap');
+  const grid = document.getElementById('milesGrid');
+  if (!wrap || !grid) return;
+
+  const gap = window.matchMedia('(max-width: 720px)').matches ? 3 : 6;
+  const availW = Math.max(0, wrap.clientWidth);
+  const availH = Math.max(0, wrap.clientHeight);
+  if (!availW || !availH) return;
+
+  const byWidth = (availW - (18 * gap)) / 19;
+  const byHeight = (availH - (9 * gap)) / 10;
+  const cell = Math.max(9, Math.floor(Math.min(byWidth, byHeight)));
+  grid.style.setProperty('--mile-cell', `${cell}px`);
+}
+
 /* ================================================================
    4. CLAIM A MILE — slide-up panel (still useful for browsing
    all 190 sponsorable units in a grid view).
@@ -2858,16 +3189,14 @@ function buildMilesGrid() {
     tip.innerHTML = sponsorCardHTML(i, s, availableTier);
     block.appendChild(tip);
 
-    // Only un-sponsored miles are clickable. Sponsored ones are locked
-    // so we never get double-sponsorship on a single mile.
-    if (!s) {
-      block.addEventListener('click',
-        () => openSponsorModal(i, availableTier || 'standard'));
-    }
+    // Tap/click opens a larger preview modal for readability.
+    block.addEventListener('click',
+      () => openMilePreviewModal(i, s, availableTier || 'standard'));
     grid.appendChild(block);
   }
   document.getElementById('statClaimed').textContent = claimed;
   document.getElementById('statRemaining').textContent = 190 - claimed;
+  updateMilesGridSize();
 }
 
 function setupMilePanel() {
@@ -2885,6 +3214,10 @@ function setupMilePanel() {
     if (header) header.classList.add('is-hidden'); // free up vertical space
     document.getElementById('map-section')
       .scrollIntoView({ behavior: 'smooth', block: 'start' });
+    requestAnimationFrame(() => {
+      updateMilesGridSize();
+      setTimeout(updateMilesGridSize, 120);
+    });
   }
   function close() {
     panel.classList.remove('is-open');
@@ -2898,6 +3231,53 @@ function setupMilePanel() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && panel.classList.contains('is-open')) close();
   });
+  window.addEventListener('resize', updateMilesGridSize);
+}
+
+function setupMilePreviewModal() {
+  const modal   = document.getElementById('milePreviewModal');
+  const closeB  = document.getElementById('milePreviewClose');
+  const eyebrow = document.getElementById('milePreviewEyebrow');
+  const title   = document.getElementById('milePreviewTitle');
+  const body    = document.getElementById('milePreviewBody');
+  const actions = document.getElementById('milePreviewActions');
+  if (!modal || !closeB || !eyebrow || !title || !body || !actions) return;
+
+  function close() { modal.classList.remove('is-open'); }
+
+  openMilePreviewModal = function (mileNum, sponsor, tier) {
+    const availableTier = sponsor ? null : tier;
+    body.innerHTML = sponsorCardHTML(mileNum, sponsor, availableTier);
+
+    if (sponsor) {
+      eyebrow.textContent = `Mile ${mileNum} · Sponsored`;
+      title.textContent = sponsor.sponsor;
+      actions.innerHTML = '';
+    } else {
+      const price = tier === 'premium'
+        ? CONFIG.premiumPrice
+        : tier === 'featured'
+          ? CONFIG.featuredPrice
+          : CONFIG.milePrice;
+      eyebrow.textContent = `Mile ${mileNum} · Available`;
+      title.textContent = `Sponsor mile ${mileNum}`;
+      actions.innerHTML = `<button type="button" class="btn btn-primary" id="milePreviewSponsorBtn">Sponsor this mile · £${price}</button>`;
+      const sponsorBtn = document.getElementById('milePreviewSponsorBtn');
+      if (sponsorBtn) {
+        sponsorBtn.addEventListener('click', () => {
+          close();
+          openSponsorModal(mileNum, tier || 'standard');
+        });
+      }
+    }
+    modal.classList.add('is-open');
+  };
+
+  closeB.addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('is-open')) close();
+  });
 }
 
 /* ================================================================
@@ -2909,6 +3289,7 @@ function setupRaisedOrb() {
   const orb      = document.getElementById('raisedOrb');
   const toggle   = document.getElementById('raisedOrbToggle');
   const closeBtn = document.getElementById('raisedOrbClose');
+  const mq       = window.matchMedia('(max-width: 720px)');
 
   function expand() {
     orb.classList.remove('is-collapsed');
@@ -2921,6 +3302,9 @@ function setupRaisedOrb() {
 
   toggle.addEventListener('click', (e) => { e.stopPropagation(); expand(); });
   closeBtn.addEventListener('click', (e) => { e.stopPropagation(); collapse(); });
+
+  // On mobile, start collapsed so the map area stays clear.
+  if (mq.matches) collapse();
 }
 
 /* ================================================================
@@ -2981,6 +3365,7 @@ function setupCharityModal() {
    Lets the user choose £10 (pixel) or £50 (whole mile).
    ================================================================ */
 let openSponsorModal = () => {}; // assigned in setupSponsorModal
+let openMilePreviewModal = () => {}; // assigned in setupMilePreviewModal
 
 function setupSponsorModal() {
   const modal     = document.getElementById('sponsorModal');
@@ -3581,6 +3966,43 @@ function setupHeaderAutoHide() {
 }
 
 /* ================================================================
+   MOBILE MAP OVERLAYS — collapse map actions + map legend on
+   small screens to avoid covering too much map real estate.
+   ================================================================ */
+function setupMobileMapOverlays() {
+  const mq = window.matchMedia('(max-width: 720px)');
+  const actionStack = document.querySelector('.action-stack');
+  const actionToggle = document.getElementById('mapActionsToggle');
+  const legend = document.querySelector('.map-legend');
+  const legendToggle = document.getElementById('mapLegendToggle');
+
+  if (!actionStack || !actionToggle || !legend || !legendToggle) return;
+
+  const setToggleState = (el, toggle, collapsed) => {
+    el.classList.toggle('is-collapsed', collapsed);
+    toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  };
+
+  const syncByViewport = () => {
+    const isMobile = mq.matches;
+    setToggleState(actionStack, actionToggle, isMobile);
+    setToggleState(legend, legendToggle, isMobile);
+  };
+
+  syncByViewport();
+  mq.addEventListener('change', syncByViewport);
+
+  actionToggle.addEventListener('click', () => {
+    const collapsed = actionStack.classList.contains('is-collapsed');
+    setToggleState(actionStack, actionToggle, !collapsed);
+  });
+  legendToggle.addEventListener('click', () => {
+    const collapsed = legend.classList.contains('is-collapsed');
+    setToggleState(legend, legendToggle, !collapsed);
+  });
+}
+
+/* ================================================================
    INIT
    ================================================================ */
 document.addEventListener('DOMContentLoaded', () => {
@@ -3588,8 +4010,10 @@ document.addEventListener('DOMContentLoaded', () => {
   animateRaised();
   setupCountdown();
   setupHeaderAutoHide();
+  setupMobileMapOverlays();
   setupMap();
   setupScrollyMap();
+  setupMilePreviewModal();
   buildMilesGrid();
   setupMilePanel();
   setupSponsorModal();
