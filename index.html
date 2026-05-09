@@ -2289,6 +2289,24 @@ button { font-family: inherit; }
   transition: color 0.2s ease;
 }
 
+/* =============================================================
+   MOBILE FIXES: Map Height & Scrubber Positions
+   ============================================================= */
+@media (max-width: 720px) {
+  /* Use dynamic viewport height so it doesn't hide behind mobile toolbars */
+  .map-shell {
+    height: 100dvh !important;
+  }
+  
+  /* Raise the bottom elements slightly to clear the home bar */
+  .scrubber { 
+    bottom: 32px !important; 
+  }
+  .raised-orb {
+    bottom: 24px !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -3007,9 +3025,14 @@ function setupMap() {
   // Pre-compute cumulative distances for fast point-along-route lookup
   recomputeRouteMetrics();
 
+// Check if screen is mobile-sized
+  const isMobile = window.matchMedia('(max-width: 720px)').matches;
+
   leafletMap = L.map('map', {
     zoomControl: true,
-    scrollWheelZoom: false, // we hijack vertical scroll for panning
+    scrollWheelZoom: false, 
+    dragging: !isMobile,    // <--- FIX: Only disables dragging on mobile
+    touchZoom: !isMobile,   // <--- FIX: Only disables touch-zoom on mobile
     attributionControl: true,
     zoomSnap: 0.5,
   }).setView(routeLatLngs[0], CONFIG.mapZoom);
