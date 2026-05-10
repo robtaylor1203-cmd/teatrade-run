@@ -3668,7 +3668,7 @@ html {
     <h3 id="gearBidTitle">Bid on <strong>Gear</strong>.</h3>
     <p class="lede">Submit your sealed bid. We will contact the highest bidder when the auction closes to arrange the Enthuse donation and collect logo files.</p>
 
-    <form id="gearBidForm" class="sponsor-form" novalidate>
+    <form id="gearBidForm" class="sponsor-form">
       <input type="hidden" id="gearBidItemName" name="item">
       
       <label class="sponsor-form__field">
@@ -5186,17 +5186,35 @@ function setupGearModal() {
     });
   });
 
-  // Handle fake submission for now
-  form.addEventListener('submit', (e) => {
+  // Real Formspree submission
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('gearBidSubmit');
-    btn.innerHTML = '✓ Bid Recorded Successfully';
-    btn.style.background = '#0b6e4f'; // success green
-    setTimeout(() => {
-      close();
-      btn.innerHTML = 'Submit Sealed Bid';
-      btn.style.background = '';
-    }, 2000);
+    btn.innerHTML = 'Submitting...';
+    btn.disabled = true;
+
+    try {
+      const formData = new FormData(form);
+      // Send the data straight to your Formspree inbox
+      await fetch('https://formspree.io/f/mgodpjgk', {
+        method: 'POST',
+        body: formData,
+        headers: { 'Accept': 'application/json' }
+      });
+      
+      btn.innerHTML = '✓ Bid Recorded';
+      btn.style.background = 'var(--muted)'; // Sleek grey success color
+      
+      setTimeout(() => {
+        close();
+        btn.innerHTML = 'Submit Sealed Bid';
+        btn.style.background = '';
+        btn.disabled = false;
+      }, 2500);
+    } catch (error) {
+      btn.innerHTML = 'Error - Try Again';
+      btn.disabled = false;
+    }
   });
 }
 
