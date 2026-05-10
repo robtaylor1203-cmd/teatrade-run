@@ -3194,7 +3194,7 @@ html {
         <h3>Front <strong>Chest</strong></h3>
         <p>The ultimate real estate. Placed front and center across all finish line media, press shots, and major milestones.</p>
         <div class="gear-spec">Est. Size: 250mm x 120mm</div>
-        <div class="gear-bid">Min Bid: £500 <span>→</span></div>
+        <div class="gear-bid">Place Bid <span>→</span></div>
       </div>
 
       <div class="gear-card js-open-bid" data-item="Upper Back (T-Shirt)" data-min="400">
@@ -3211,7 +3211,7 @@ html {
         <h3>Upper <strong>Back</strong></h3>
         <p>Massive visibility for vehicles and pacers following the route, prominent in "moving away" drone and video shots.</p>
         <div class="gear-spec">Est. Size: 280mm x 150mm</div>
-        <div class="gear-bid">Min Bid: £400 <span>→</span></div>
+        <div class="gear-bid">Place Bid <span>→</span></div>
       </div>
 
       <div class="gear-card js-open-bid" data-item="Right Sleeve (T-Shirt)" data-min="250">
@@ -3228,7 +3228,7 @@ html {
         <h3>Right <strong>Sleeve</strong></h3>
         <p>High visibility during the entire 190-mile run. Featured prominently in all side-profile photos and daily video logs.</p>
         <div class="gear-spec">Est. Size: 80mm x 60mm</div>
-        <div class="gear-bid">Min Bid: £250 <span>→</span></div>
+        <div class="gear-bid">Place Bid <span>→</span></div>
       </div>
 
       <div class="gear-card js-open-bid" data-item="Left Sleeve (T-Shirt)" data-min="250">
@@ -3245,24 +3245,22 @@ html {
         <h3>Left <strong>Sleeve</strong></h3>
         <p>Perfect for corporate crests or compact horizontal logos, clearly visible from the roadside.</p>
         <div class="gear-spec">Est. Size: 80mm x 60mm</div>
-        <div class="gear-bid">Min Bid: £250 <span>→</span></div>
+        <div class="gear-bid">Place Bid <span>→</span></div>
       </div>
 
       <div class="gear-card js-open-bid" data-item="Running Cap (Front Panel)" data-min="150">
         <div class="gear-pulse"><div class="gear-pulse__dot"></div> Available</div>
         <div class="gear-diagram">
           <svg viewBox="0 0 120 120">
-            <path d="M 35 70 C 35 30, 85 30, 85 70" fill="none" stroke="currentColor" stroke-width="2"/>
-            <path d="M 20 70 C 40 60, 80 60, 100 70" fill="none" stroke="currentColor" stroke-width="2"/>
-            <path d="M 20 70 C 40 78, 80 78, 100 70" fill="none" stroke="currentColor" stroke-width="2"/>
-            <circle cx="60" cy="32" r="3" fill="currentColor"/>
+            <path d="M 30 68 C 30 25, 90 25, 90 68" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M 20 72 C 40 60, 80 60, 100 72" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             <rect x="45" y="46" width="30" height="14" rx="2" fill="var(--accent-orange)"/>
           </svg>
         </div>
         <h3>Running <strong>Cap</strong></h3>
         <p>Your logo directly above the brim. Guaranteed visibility in close-up vlog updates and start line selfies.</p>
         <div class="gear-spec">Est. Size: 100mm x 50mm</div>
-        <div class="gear-bid">Min Bid: £150 <span>→</span></div>
+        <div class="gear-bid">Place Bid <span>→</span></div>
       </div>
 
       <div class="gear-card js-open-bid" data-item="Right Leg (Trousers)" data-min="200">
@@ -3277,7 +3275,7 @@ html {
         <h3>Right Leg <strong>(Trousers)</strong></h3>
         <p>Extensive vertical real estate. High visibility during colder night segments and early morning departures.</p>
         <div class="gear-spec">Est. Size: 80mm x 200mm</div>
-        <div class="gear-bid">Min Bid: £200 <span>→</span></div>
+        <div class="gear-bid">Place Bid <span>→</span></div>
       </div>
       
       <div class="gear-card js-open-bid" data-item="Left Leg (Trousers)" data-min="200">
@@ -3292,7 +3290,7 @@ html {
         <h3>Left Leg <strong>(Trousers)</strong></h3>
         <p>Perfect for long vertical text marks or stacked sponsor logos. Highly visible on the move.</p>
         <div class="gear-spec">Est. Size: 80mm x 200mm</div>
-        <div class="gear-bid">Min Bid: £200 <span>→</span></div>
+        <div class="gear-bid">Place Bid <span>→</span></div>
       </div>
 
       <div class="gear-card js-open-bid" data-item="Right Leg (Shorts)" data-min="150">
@@ -3307,7 +3305,7 @@ html {
         <h3>Right Leg <strong>(Shorts)</strong></h3>
         <p>Dynamic lower-body placement. Visible during the hundreds of thousands of strides taken across the daytime route.</p>
         <div class="gear-spec">Est. Size: 120mm x 80mm</div>
-        <div class="gear-bid">Min Bid: £150 <span>→</span></div>
+        <div class="gear-bid">Place Bid <span>→</span></div>
       </div>
       
       <div class="gear-card js-open-bid" data-item="Left Leg (Shorts)" data-min="150">
@@ -3322,7 +3320,7 @@ html {
         <h3>Left Leg <strong>(Shorts)</strong></h3>
         <p>Dynamic lower-body placement. Symmetrical option perfect for secondary brand marks or text-heavy logos.</p>
         <div class="gear-spec">Est. Size: 120mm x 80mm</div>
-        <div class="gear-bid">Min Bid: £150 <span>→</span></div>
+        <div class="gear-bid">Place Bid <span>→</span></div>
       </div>
 
     </div>
@@ -5159,18 +5157,19 @@ function setupGearModal() {
   const amountInput = document.getElementById('gearBidAmount');
   const amountLabel = document.getElementById('gearBidAmountLabel');
   const form = document.getElementById('gearBidForm');
+  const errorEl = document.getElementById('gearBidError'); 
   
-  function open(itemName, minBid, isGold) {
+  function open(itemName, isGold) {
     form.reset();
+    if (errorEl) errorEl.hidden = true;
     itemInput.value = itemName;
     titleEl.innerHTML = `Bid on <strong>${itemName.split(' ')[0]}</strong>.`;
-    amountInput.min = minBid;
-    amountInput.placeholder = `Minimum £${minBid}`;
-    amountLabel.textContent = `Your Maximum Bid (Min £${minBid})`;
     
-    // Theme it gold if it's the premium chest slot
+    amountInput.removeAttribute('min');
+    amountInput.placeholder = `e.g. 100`;
+    amountLabel.textContent = `Your Maximum Bid (£)`;
+    
     modal.classList.toggle('is-premium', isGold);
-    
     modal.classList.add('is-open');
     setTimeout(() => form.querySelector('input[name="company_name"]').focus(), 60);
   }
@@ -5179,31 +5178,50 @@ function setupGearModal() {
   closeBtn.addEventListener('click', close);
   modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
   
-  // Attach listeners to all gear cards
   document.querySelectorAll('.js-open-bid').forEach(card => {
     card.addEventListener('click', () => {
-      open(card.dataset.item, card.dataset.min, card.classList.contains('is-gold'));
+      open(card.dataset.item, card.classList.contains('is-gold'));
     });
   });
 
-  // Real Formspree submission
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (errorEl) errorEl.hidden = true; 
+    
+    const fd = new FormData(form);
+    const company = (fd.get('company_name') || '').toString().trim();
+    const email = (fd.get('contact_email') || '').toString().trim();
+    const bid = Number(fd.get('bid_amount'));
+
+    if (!company) {
+      errorEl.textContent = 'Please enter your Company Name.';
+      errorEl.hidden = false;
+      return;
+    }
+    if (!email || !/^[^@]+@[^@]+\.[a-zA-Z]{2,}$/.test(email)) {
+      errorEl.textContent = 'Please enter a valid email address.';
+      errorEl.hidden = false;
+      return;
+    }
+    if (!bid || bid <= 0) {
+      errorEl.textContent = `Please enter a valid bid amount.`;
+      errorEl.hidden = false;
+      return;
+    }
+
     const btn = document.getElementById('gearBidSubmit');
     btn.innerHTML = 'Submitting...';
     btn.disabled = true;
 
     try {
-      const formData = new FormData(form);
-      // Send the data straight to your Formspree inbox
       await fetch('https://formspree.io/f/mgodpjgk', {
         method: 'POST',
-        body: formData,
+        body: fd,
         headers: { 'Accept': 'application/json' }
       });
       
       btn.innerHTML = '✓ Bid Recorded';
-      btn.style.background = 'var(--muted)'; // Sleek grey success color
+      btn.style.background = 'var(--muted)'; 
       
       setTimeout(() => {
         close();
@@ -5212,7 +5230,9 @@ function setupGearModal() {
         btn.disabled = false;
       }, 2500);
     } catch (error) {
-      btn.innerHTML = 'Error - Try Again';
+      errorEl.textContent = 'Network error — please try again.';
+      errorEl.hidden = false;
+      btn.innerHTML = 'Submit Sealed Bid';
       btn.disabled = false;
     }
   });
