@@ -5163,7 +5163,7 @@ function setupGearModal() {
     form.reset();
     if (errorEl) errorEl.hidden = true;
     itemInput.value = itemName;
-    titleEl.innerHTML = `Bid on <strong>${itemName.split(' ')[0]}</strong>.`;
+    titleEl.innerHTML = `Bid on <strong>${itemName}</strong>.`;
     
     amountInput.removeAttribute('min');
     amountInput.placeholder = `e.g. 100`;
