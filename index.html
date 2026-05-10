@@ -4040,41 +4040,29 @@ function setupMilePreviewModal() {
   function close() { modal.classList.remove('is-open'); }
 
 openMilePreviewModal = function (mileNum, sponsor, tier) {
-    const availableTier = sponsor ? null : tier;
-    body.innerHTML = sponsorCardHTML(mileNum, sponsor, availableTier);
-
     if (sponsor) {
+      // It's already sponsored — show the preview modal so they can read the message!
+      body.innerHTML = sponsorCardHTML(mileNum, sponsor, null);
       eyebrow.textContent = `Mile ${mileNum} · Sponsored`;
       title.textContent = sponsor.sponsor;
       actions.innerHTML = '';
-      // Reset colors for already-sponsored miles
       modal.classList.remove('is-premium', 'is-featured'); 
+      modal.classList.add('is-open');
     } else {
-      const price = tier === 'premium'
-        ? CONFIG.premiumPrice
-        : tier === 'featured'
-          ? CONFIG.featuredPrice
-          : CONFIG.milePrice;
-          
-      // Give the title the <strong> tags so the CSS can target it
-      eyebrow.textContent = tier === 'premium' ? `Mile ${mileNum} · Start & Finish` : tier === 'featured' ? `Mile ${mileNum} · Premium` : `Mile ${mileNum} · Available`;
-      title.innerHTML = tier === 'premium' ? `Sponsor a <strong>start &amp; finish</strong> mile.` : tier === 'featured' ? `Sponsor a <strong>premium</strong> mile.` : `Sponsor mile ${mileNum}`;
-      
-      actions.innerHTML = `<button type="button" class="btn btn-primary" id="milePreviewSponsorBtn">Sponsor this mile · £${price}</button>`;
-      
-      const sponsorBtn = document.getElementById('milePreviewSponsorBtn');
-      if (sponsorBtn) {
-        sponsorBtn.addEventListener('click', () => {
-          close();
-          openSponsorModal(mileNum, tier || 'standard');
+      // It's available! Skip the preview entirely and go straight to the form.
+      const currentTier = (tier === 'premium' || tier === 'featured') ? tier : 'standard';
+      const currentAmount = currentTier === 'premium'  ? CONFIG.premiumPrice
+                          : currentTier === 'featured' ? CONFIG.featuredPrice
+                          : CONFIG.milePrice;
+                          
+      if (typeof openSponsorForm === 'function') {
+        openSponsorForm({
+          pixel:  mileNum,
+          tier:   currentTier,
+          amount: currentAmount,
         });
       }
-
-      // Turn on the Gold (premium) or Blue (featured) theme!
-      modal.classList.toggle('is-premium', tier === 'premium');
-      modal.classList.toggle('is-featured', tier === 'featured');
     }
-    modal.classList.add('is-open');
   };
 
   closeB.addEventListener('click', close);
