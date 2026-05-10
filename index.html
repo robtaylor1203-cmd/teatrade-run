@@ -78,6 +78,20 @@ body {
   overflow-x: hidden; /* prevent the full-bleed map's 100vw from causing horizontal scroll */
 }
 
+/* =============================================================
+   PREMIUM MICRO-INTERACTIONS (The "Wow" Factor)
+   ============================================================= */
+/* 1. Custom text selection color (soft orange instead of system blue) */
+::selection {
+  background: rgba(245, 102, 0, 0.15);
+  color: var(--accent-orange);
+}
+
+/* 2. Remove the ugly grey flash when tapping buttons on mobile */
+a, button, input, textarea, .charity-mini, .sponsor-opt, .mile {
+  -webkit-tap-highlight-color: transparent;
+}
+
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 img { max-width: 100%; display: block; }
