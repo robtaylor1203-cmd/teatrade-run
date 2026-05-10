@@ -2488,7 +2488,11 @@ html {
 
 /* Modal Z-Index Fix */
 .sponsor-modal {
-  z-index: 9999 !important; /* Forces it above the map */
+  z-index: 9999 !important; 
+}
+
+.notice-glass {
+  border-top: 4px solid var(--accent-orange) !important;
 }
 .sponsor-modal.is-open {
   opacity: 1 !important;
@@ -2572,6 +2576,22 @@ html {
 
 </head>
 <body>
+
+  <div class="sponsor-modal is-open" id="comingSoonModal" role="dialog" aria-modal="true">
+  <div class="sponsor-glass notice-glass" style="max-width: 420px; text-align: center;">
+    <div class="eyebrow">A work in progress</div>
+    <h3>The kettle is <strong>boiling</strong>.</h3>
+    <p class="lede">I'm currently training and setting up the charity donation lines. Sponsorships aren't open just yet, but feel free to explore the route!</p>
+    
+    <button class="btn btn-primary" onclick="document.getElementById('comingSoonModal').classList.remove('is-open')" style="width: 100%; justify-content: center;">
+      Explore the Map
+    </button>
+    
+    <div class="small" style="margin-top:15px;">
+      Follow training on <a href="#stravaModal" onclick="document.getElementById('comingSoonModal').classList.remove('is-open'); setTimeout(() => document.getElementById('trackTrainingBtn').click(), 100)" style="color:var(--accent-orange); font-weight:500;">Strava</a>
+    </div>
+  </div>
+</div>
 
 <!-- Reusable inline SVG icon set (referenced via <use href="#i-name">) -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -3212,19 +3232,7 @@ html {
   </div>
 </div>
 
-<div id="passwordOverlay" style="display: none;">
-  <div class="password-modal">
-    <h3>Site <strong>Protected</strong>.</h3>
-    <p>Please enter the password to view this preview.</p>
-    <form id="passwordForm">
-      <input type="password" id="passwordInput" placeholder="Password" required>
-      <div id="passwordError" style="display:none;">Incorrect password</div>
-      <button type="submit" class="btn btn-primary" style="width:100%; margin-top: 16px; justify-content: center;">
-        Unlock Site
-      </button>
-    </form>
-  </div>
-</div>
+
 
 <footer class="site-footer">
   <div class="container footer-single-line">
@@ -3269,45 +3277,6 @@ html {
 <script>
 
 
-
-/* ================================================================
-   PASSWORD PROTECTION
-   ================================================================ */
-function setupPasswordProtection() {
-  const overlay = document.getElementById('passwordOverlay');
-  const form = document.getElementById('passwordForm');
-  const input = document.getElementById('passwordInput');
-  const errorMsg = document.getElementById('passwordError');
-
-  // Check if they already unlocked it in this session
-  if (sessionStorage.getItem('site_unlocked') === 'true') {
-    overlay.style.display = 'none';
-    return;
-  }
-
-  // Show overlay and freeze scrolling behind it
-  overlay.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    if (input.value === 'run.teatrade') {
-      // Correct password
-      sessionStorage.setItem('site_unlocked', 'true');
-      overlay.style.display = 'none';
-      document.body.style.overflow = ''; // Unfreeze scrolling
-      
-      // Safety trigger: Tell Leaflet to recalculate just in case
-      if (typeof leafletMap !== 'undefined' && leafletMap !== null) {
-        leafletMap.invalidateSize();
-      }
-    } else {
-      // Wrong password
-      errorMsg.style.display = 'block';
-      input.value = '';
-    }
-  });
-}
 
 /* ================================================================
    CONFIG — single source of truth.
@@ -4702,7 +4671,6 @@ function setupMobileMapOverlays() {
    INIT
    ================================================================ */
 document.addEventListener('DOMContentLoaded', () => {
-  setupPasswordProtection(); // <--- ADD THIS LINE HERE
   animateRaised();
   setupCountdown();
   setupHeaderAutoHide();
