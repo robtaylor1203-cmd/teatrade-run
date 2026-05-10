@@ -3146,27 +3146,7 @@ html {
 <!-- =====================================================
      SPONSOR PIXEL / MILE — glassmorphism modal
      ===================================================== -->
-<div class="sponsor-modal" id="sponsorModal" role="dialog" aria-modal="true" aria-labelledby="sponsorTitle">
-  <div class="sponsor-glass">
-    <button class="sponsor-glass__close" id="sponsorClose" aria-label="Close">×</button>
-    <div class="eyebrow" id="sponsorEyebrow">Mile 1 of 190</div>
-    <h3 id="sponsorTitle">Sponsor a <strong>mile</strong>.</h3>
-    <p class="lede">Pop your name, message, or company logo onto your mile. Every pound directly funds the run and the two charities.</p>
 
-    <div class="sponsor-single" aria-label="Sponsorship amount">
-      <div class="sponsor-single__price" id="sponsorPrice">£50</div>
-      <div class="sponsor-single__body">
-        <div class="sponsor-single__scope" id="sponsorScope">One mile of the route</div>
-        <div class="sponsor-single__desc">Your name, message and (optionally) your logo displayed on this mile across the map and the sponsor panel.</div>
-      </div>
-    </div>
-
-    <button class="btn btn-primary" id="sponsorContinueBtn">
-      Continue · <span id="sponsorContinueAmt">£10</span>
-    </button>
-    <div class="small">Secure checkout via GiveWheel · 100% to charity</div>
-  </div>
-</div>
 
 <!-- =====================================================
      SPONSOR DETAILS FORM — second step of the modal
@@ -4185,73 +4165,29 @@ function setupCharityModal() {
    5. CAFFEINE BOOST modal
    ================================================================ */
 /* ================================================================
-   GLASSMORPHISM SPONSOR MODAL — opens for any unsponsored pixel.
-   Lets the user choose £10 (pixel) or £50 (whole mile).
+   SPONSOR PASSTHROUGH LOGIC
+   Directly routes clicks to the form modal (better UX)
    ================================================================ */
 let openSponsorModal = () => {}; // assigned in setupSponsorModal
 let openMilePreviewModal = () => {}; // assigned in setupMilePreviewModal
 
 function setupSponsorModal() {
-  const modal     = document.getElementById('sponsorModal');
-  const closeBtn  = document.getElementById('sponsorClose');
-  const eyebrow   = document.getElementById('sponsorEyebrow');
-  const title     = document.getElementById('sponsorTitle');
-  const priceEl   = document.getElementById('sponsorPrice');
-  const scopeEl   = document.getElementById('sponsorScope');
-  const continueB = document.getElementById('sponsorContinueBtn');
-  const contAmt   = document.getElementById('sponsorContinueAmt');
-  let currentPixel = 1;
-  let currentTier  = 'standard';
-  let currentAmount = CONFIG.milePrice;
-
+  // By overriding this function, we skip the old intermediate popup
+  // and send the user straight to the details form.
   openSponsorModal = function (pixelNum, tier) {
-    currentPixel  = pixelNum;
-    currentTier   = (tier === 'premium' || tier === 'featured') ? tier : 'standard';
-    currentAmount = currentTier === 'premium'  ? CONFIG.premiumPrice
-                  : currentTier === 'featured' ? CONFIG.featuredPrice
-                  : CONFIG.milePrice;
+    const currentTier   = (tier === 'premium' || tier === 'featured') ? tier : 'standard';
+    const currentAmount = currentTier === 'premium'  ? CONFIG.premiumPrice
+                        : currentTier === 'featured' ? CONFIG.featuredPrice
+                        : CONFIG.milePrice;
 
-    eyebrow.textContent = currentTier === 'premium'
-      ? `Mile ${pixelNum} of 190 · Start & Finish`
-      : currentTier === 'featured'
-        ? `Mile ${pixelNum} of 190 · Premium`
-        : `Mile ${pixelNum} of 190`;
-    title.innerHTML = currentTier === 'premium'
-      ? 'Sponsor a <strong>start &amp; finish</strong> mile.'
-      : currentTier === 'featured'
-        ? 'Sponsor a <strong>premium mile</strong>.'
-        : 'Sponsor a <strong>mile</strong>.';
-    priceEl.textContent = '£' + currentAmount;
-    scopeEl.textContent = currentTier === 'premium'
-      ? 'The start (or finish) of the route'
-      : currentTier === 'featured'
-        ? 'A premium mile of the route'
-        : 'One mile of the route';
-    contAmt.textContent = '£' + currentAmount;
-
-    modal.classList.toggle('is-premium',  currentTier === 'premium');
-    modal.classList.toggle('is-featured', currentTier === 'featured');
-    modal.classList.add('is-open');
+    if (typeof openSponsorForm === 'function') {
+      openSponsorForm({
+        pixel:  pixelNum,
+        tier:   currentTier,
+        amount: currentAmount,
+      });
+    }
   };
-
-  function close() { modal.classList.remove('is-open'); }
-  closeBtn.addEventListener('click', close);
-  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && modal.classList.contains('is-open')) close();
-  });
-
-  continueB.addEventListener('click', () => {
-    // Step 1 → step 2: close the price modal, open the details form
-    // pre-loaded with the chosen mile + tier + amount. The form does
-    // the actual hand-off to Enthuse via /api/claim.
-    close();
-    openSponsorForm({
-      pixel:  currentPixel,
-      tier:   currentTier,
-      amount: currentAmount,
-    });
-  });
 }
 
 /* ================================================================
