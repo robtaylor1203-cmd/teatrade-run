@@ -2562,6 +2562,57 @@ html {
   .hero-lede { margin-top: 0; } 
 }
 
+/* =============================================================
+   LIVE TOAST NOTIFICATIONS
+   ============================================================= */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+}
+.toast {
+  background: var(--panel);
+  border-left: 4px solid var(--accent-orange);
+  padding: 12px 18px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 280px;
+  transform: translateX(120%);
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s;
+  pointer-events: auto;
+}
+.toast.is-visible { transform: translateX(0); }
+.toast__icon {
+  width: 32px;
+  height: 32px;
+  background: rgba(245, 102, 0, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-orange);
+}
+.toast__content { flex: 1; }
+.toast__title { font-size: 0.85rem; font-weight: 500; color: var(--text); }
+.toast__msg { font-size: 0.78rem; color: var(--muted); }
+
+/* Strava specific toast */
+.toast--strava { border-left-color: #fc4c02; }
+.toast--strava .toast__icon { background: rgba(252, 76, 2, 0.1); color: #fc4c02; }
+
+@media (max-width: 720px) {
+  #toast-container { bottom: 80px; right: 12px; left: 12px; }
+  .toast { min-width: 0; }
+}
+
 </style>
 <meta property="og:title" content="Taylor's 190-Mile Tea Trade Run" />
   <meta property="og:description" content="I'm running 190 miles from a Welsh tea estate to the Cutty Sark for Alzheimer's Research UK and the UKTTBS. Sponsor a mile and join the journey!" />
@@ -3246,6 +3297,8 @@ html {
     </div>
   </div>
 </footer>
+
+<div id="toast-container" aria-live="polite"></div>
 
 <div class="sponsor-modal" id="contactModal" role="dialog" aria-modal="true">
   <div class="sponsor-glass" style="max-width: 400px; text-align: center;">
@@ -4416,6 +4469,8 @@ async function refreshSponsorships() {
       CONFIG.sponsoredPixels = data.sponsorships;
     }
     if (Number.isFinite(data.raised_total)) {
+      // Check if the total has increased and show a toast
+      ToastManager.checkDonations(data.raised_total);
       CONFIG.raisedTotal = data.raised_total;
     }
     if (Number.isFinite(data.raised_goal)) {
@@ -4483,6 +4538,10 @@ function setupStravaModal() {
 
   function paint(stats) {
     const dist = stats.distance_miles ?? 0;
+    
+    // Check if distance has increased and show a toast
+    ToastManager.checkStrava(dist);
+    
     const time = stats.moving_time_seconds ?? 0;
     const elev = stats.elevation_gain_feet ?? 0;
     const runs = stats.run_count ?? 0;
@@ -4734,6 +4793,56 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 })();
+
+/* ================================================================
+   LIVE TOAST LOGIC
+   ================================================================ */
+const ToastManager = {
+  container: document.getElementById('toast-container'),
+  lastRaised: CONFIG.raisedTotal,
+  lastStravaDist: 0,
+
+  show(title, msg, type = 'donation') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type === 'strava' ? 'toast--strava' : ''}`;
+    
+    const icon = type === 'strava' 
+      ? '<svg style="width:16px;height:16px;"><use href="#i-runner"/></svg>' 
+      : '£';
+
+    toast.innerHTML = `
+      <div class="toast__icon">${icon}</div>
+      <div class="toast__content">
+        <div class="toast__title">${title}</div>
+        <div class="toast__msg">${msg}</div>
+      </div>
+    `;
+
+    this.container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('is-visible'));
+
+    setTimeout(() => {
+      toast.classList.remove('is-visible');
+      setTimeout(() => toast.remove(), 500);
+    }, 5000);
+  },
+
+  checkDonations(newTotal) {
+    if (newTotal > this.lastRaised) {
+      const diff = newTotal - this.lastRaised;
+      this.show('New Donation!', `Someone just contributed £${diff} to the run.`);
+      this.lastRaised = newTotal;
+    }
+  },
+
+  checkStrava(newDist) {
+    if (this.lastStravaDist > 0 && newDist > this.lastStravaDist) {
+      const diff = (newDist - this.lastStravaDist).toFixed(1);
+      this.show('Training Update', `Taylor just logged another ${diff}km on Strava!`);
+    }
+    this.lastStravaDist = newDist;
+  }
+};
 
 </script>
 </body>
