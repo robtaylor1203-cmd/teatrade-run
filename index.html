@@ -2751,14 +2751,32 @@ html {
   gap: 24px;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  padding-top: 24px;    /* Provides airspace for the hover lift */
-  padding-bottom: 48px; /* Space for hover shadows */
-  margin-top: 0;        /* Removed negative margin to prevent top edge clipping */
-  margin-bottom: -48px; /* Hide scrollbar visually */
+  padding-top: 24px;    
+  padding-bottom: 48px; 
+  margin-top: 0;        
+  margin-bottom: 16px;  /* Gives the new scrollbar breathing room */
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; /* Firefox */
+  
+  /* Firefox elegant scrollbar */
+  scrollbar-width: thin; 
+  scrollbar-color: var(--accent-orange) rgba(0,0,0,0.04); 
 }
-.gear-carousel::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+
+/* Chrome/Safari/Edge elegant scrollbar */
+.gear-carousel::-webkit-scrollbar { 
+  height: 6px; /* Sleek, thin bar */
+}
+.gear-carousel::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.04); /* Very subtle track background */
+  border-radius: 10px;
+}
+.gear-carousel::-webkit-scrollbar-thumb {
+  background: var(--accent-orange);
+  border-radius: 10px;
+}
+.gear-carousel::-webkit-scrollbar-thumb:hover {
+  background: #e05e00; 
+}
 
 .gear-card {
   flex: 0 0 320px;
@@ -2848,7 +2866,7 @@ html {
 @media (max-width: 720px) {
   .gear-card { flex: 0 0 82vw; padding: 28px 24px; }
   .gear-section { padding: 60px 0; }
-  .gear-carousel { gap: 16px; padding-top: 16px; padding-bottom: 32px; margin-top: 0; margin-bottom: -32px; }
+  .gear-carousel { gap: 16px; padding-top: 16px; padding-bottom: 32px; margin-top: 0; margin-bottom: 16px; }
 }
 </style>
 
