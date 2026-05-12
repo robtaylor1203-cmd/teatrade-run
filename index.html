@@ -228,6 +228,86 @@ html {
 .menu-toggle.is-active .hamburger-inner::before { transform: translateY(8px) rotate(45deg); }
 .menu-toggle.is-active .hamburger-inner::after { transform: translateY(-8px) rotate(-45deg); }
 
+/* =============================================================
+   SPONSOR MARQUEE (SMART LOOP)
+   ============================================================= */
+.marquee-section {
+  padding: 60px 0 20px 0; 
+  background: var(--bg);
+  border-top: 1px solid var(--hairline);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.marquee-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin-bottom: 32px;
+  font-weight: 500;
+}
+/* Fade the left and right edges */
+.marquee-container {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  /* These masks create the smooth fade-in/fade-out on the edges */
+  -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+
+.marquee-track {
+  display: flex;
+  align-items: center;
+  gap: 80px;
+  width: max-content;
+  padding-right: 80px; /* Maintains the gap for the loop */
+  animation: scroll-marquee 110s linear infinite; 
+}
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+.marquee-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 1.4rem;
+  letter-spacing: -0.02em;
+  filter: grayscale(100%) opacity(0.4);
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+/* Snaps to Brand Orange */
+.marquee-logo:hover {
+  filter: grayscale(0%) opacity(1);
+  color: var(--accent-orange); 
+  transform: scale(1.05);
+}
+.marquee-logo img {
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+}
+
+@keyframes scroll-marquee {
+  0% { transform: translateX(0); }
+  /* We move it exactly 50% because the Javascript will perfectly double the track */
+  100% { transform: translateX(-50%); } 
+}
+
+@media (max-width: 720px) {
+  .marquee-section { padding: 40px 0; }
+  .marquee-track { gap: 40px; padding-right: 40px; }
+  .marquee-logo { font-size: 1.2rem; height: 50px; }
+}
+
 /* --- Sleek Mobile Dropdown --- */
 @media (max-width: 720px) {
   .menu-toggle { display: block; }
@@ -3352,6 +3432,38 @@ html {
   </div>
 </section>
 
+
+<section class="marquee-section" style="display: none !important;">
+  <div class="marquee-label">Proudly Supported By</div>
+  
+  <div class="marquee-container">
+    <div class="marquee-track" id="smartMarqueeTrack-HIDDEN">
+      <a href="https://fiftean.com" target="_blank" rel="noopener" class="marquee-logo">
+        <img src="company-logos/fiftean.png" alt="Fiftean">
+      </a>
+      <a href="https://www.elinktea.com/" target="_blank" rel="noopener" class="marquee-logo">
+        <img src="company-logos/les.png" alt="Elink Tea">
+      </a>
+      <a href="https://www.tetley.co.uk/" target="_blank" rel="noopener" class="marquee-logo">
+        <img src="company-logos/tetley.png" alt="Tetley">
+      </a>
+      <a href="https://www.teapigs.co.uk/" target="_blank" rel="noopener" class="marquee-logo">
+        <img src="company-logos/teapigs.png" alt="Teapigs">
+      </a>
+      <a href="https://goodearth.co.uk/" target="_blank" rel="noopener" class="marquee-logo">
+        <img src="company-logos/goodearth.png" alt="Good Earth">
+      </a>
+      <a href="https://www.twinings.co.uk/" target="_blank" rel="noopener" class="marquee-logo">
+        <img src="company-logos/twinings.png" alt="Twinings">
+      </a>
+      <a href="https://www.yorkshiretea.co.uk/" target="_blank" rel="noopener" class="marquee-logo">
+        <img src="company-logos/yorkshire.png" alt="Yorkshire Tea">
+      </a>
+    </div>
+  </div>
+</section>
+
+
 <section class="faq-section" id="faq">
   <div class="container">
     <div class="hero-flex">
@@ -3408,7 +3520,7 @@ html {
         <details class="faq-item" name="faq">
           <summary>Will the run be 190 Miles exactly?</summary>
           <div class="faq-item__content">
-            <p>Considerable planning has gone into the route, but the exact distance may vary slightly due to road conditions and other factors. All kinds of unexpected things can happen along the way so a slight deviation up or down will naturally happen.</p>
+            <p>Considerable planning has gone into the route, but the exact distance may vary slightly due to road conditions and other factors. All kinds of unexpected things can happen along the way so a slight deviation up or down will naturally happen. The route itself is also under constant revision as I seek to find safer routes wherever possible.</p>
           </div>
         </details>
 
@@ -5339,6 +5451,24 @@ const ToastManager = {
     this.lastStravaDist = newDist;
   }
 };
+
+/* ================================================================
+   SMART MARQUEE LOGIC (Auto-fills the screen)
+   ================================================================ */
+(function setupSmartMarquee() {
+  const track = document.getElementById('smartMarqueeTrack');
+  if (!track) return;
+
+  const originalContent = track.innerHTML;
+  
+  // Phase 1: Keep cloning logos until they physically exceed the screen width
+  while (track.offsetWidth < window.innerWidth * 1.5) {
+    track.innerHTML += originalContent;
+  }
+  
+  // Phase 2: Clone the entire massive block exactly ONCE for a mathematically perfect -50% loop
+  track.innerHTML += track.innerHTML;
+})();
 
 </script>
 </body>
