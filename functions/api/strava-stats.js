@@ -63,9 +63,9 @@ export async function onRequestGet({ env }) {
 
     const payload = {
       since,
-      distance_miles:      +(meters / 1609.344).toFixed(1),
+      distance_km:         +(meters / 1000).toFixed(1),
       moving_time_seconds: seconds,
-      elevation_gain_feet: Math.round(elevM * 3.28084),
+      elevation_gain_meters: Math.round(elevM), /* Also swapped this to meters for you instead of feet! */
       run_count:           runs.length,
       athlete_url:         env.STRAVA_ATHLETE_ID
                              ? `https://www.strava.com/athletes/${env.STRAVA_ATHLETE_ID}`

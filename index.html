@@ -3922,7 +3922,7 @@ html {
         <div class="strava-stat__lbl">Avg pace / km</div>
       </div>
       <div class="strava-stat">
-        <div class="strava-stat__num"><span id="stravaElev">—</span><small>ft</small></div>
+        <div class="strava-stat__num"><span id="stravaElev">—</span><small>m</small></div>
         <div class="strava-stat__lbl">Elevation gain</div>
       </div>
       <div class="strava-stat" style="grid-column: 1 / -1;">
@@ -5202,13 +5202,13 @@ function setupStravaModal() {
   }
 
   function paint(stats) {
-    const dist = stats.distance_miles ?? 0;
+    const dist = stats.distance_km ?? 0;
     
     // Check if distance has increased and show a toast
     ToastManager.checkStrava(dist);
     
     const time = stats.moving_time_seconds ?? 0;
-    const elev = stats.elevation_gain_feet ?? 0;
+    const elev = stats.elevation_gain_meters ?? 0;
     const runs = stats.run_count ?? 0;
     const pace = (dist > 0 && time > 0) ? (time / dist) : 0;
 
