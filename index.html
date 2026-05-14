@@ -50,7 +50,7 @@
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
 <!-- Cloudinary upload widget — used by the Sponsor form for optional
-     company logo uploads. Returns a hosted URL we forward to Enthuse
+     company logo uploads. Returns a hosted URL we forward to GiveWheel
      and persist on the confirmed pixel. -->
 <script src="https://upload-widget.cloudinary.com/global/all.js" async></script>
 
@@ -3449,7 +3449,7 @@ html {
           Secure prime <strong>real estate.</strong>
         </h2>
         <p class="hero-lede" style="font-size: 0.95rem;">
-          Place your brand on the official 190-mile run kit. This is a closed-bid auction—submit your maximum bid, and we will contact the winners on January 31st to arrange the Enthuse donation and logo files.
+          Place your brand on the official 190-mile run kit. This is a closed-bid auction—submit your maximum bid, and we will contact the winners on January 31st to arrange the GiveWheel donation and logo files.
         </p>
       </div>
     </div>
@@ -3679,7 +3679,7 @@ html {
         <details class="faq-item" name="faq">
           <summary>How is the money split between the charities?</summary>
           <div class="faq-item__content">
-            <p>Every single penny donated through this site goes into a locked Enthuse pot, which is then automatically split 50/50 between Alzheimer's Research UK and the UK Tea Trade Benevolent Society. The run itself is entirely self-funded.</p>
+            <p>Every single penny donated through this site goes into a locked GiveWheel pot, which is then automatically split 50/50 between Alzheimer's Research UK and the UK Tea Trade Benevolent Society. The run itself is entirely self-funded.</p>
           </div>
         </details>
 
@@ -3763,7 +3763,7 @@ html {
     <button class="sponsor-glass__close" id="sponsorFormClose" aria-label="Close">×</button>
     <div class="eyebrow" id="sponsorFormEyebrow">Mile 1 of 190</div>
     <h3 id="sponsorFormTitle">Tell us how to <strong>credit</strong> your mile.</h3>
-    <p class="lede">We'll display this beside your pixel on the map and in the sponsor panel. Donation is taken on Enthuse — we never see your card details.</p>
+    <p class="lede">We'll display this beside your pixel on the map and in the sponsor panel. Donation is taken on GiveWheel — we never see your card details.</p>
 
     <form id="sponsorForm" class="sponsor-form" novalidate>
       <fieldset class="sponsor-form__type" aria-label="Sponsoring as">
@@ -3816,9 +3816,9 @@ html {
       <div class="sponsor-form__error" id="sponsorFormError" role="alert" hidden></div>
 
       <button type="submit" class="btn btn-primary" id="sponsorFormSubmit">
-        Continue to Enthuse · <span id="sponsorFormAmount">£50</span>
+        Continue to GiveWheel · <span id="sponsorFormAmount">£50</span>
       </button>
-      <div class="small">Donation processed by Enthuse · 100% to Alzheimer's Research UK + UKTTBS</div>
+      <div class="small">Donation processed by GiveWheel · 100% to Alzheimer's Research UK + UKTTBS</div>
     </form>
   </div>
 </div>
@@ -3832,7 +3832,7 @@ html {
     <button class="sponsor-glass__close" id="donateAnyClose" aria-label="Close">×</button>
     <div class="eyebrow">Every pound counts</div>
     <h3 id="donateAnyTitle">Donate <strong>any amount</strong>.</h3>
-    <p class="lede">No mile to claim — just a quick gift toward the £19,000 goal. Donation is taken on Enthuse — we never see your card details.</p>
+    <p class="lede">No mile to claim — just a quick gift toward the £19,000 goal. Donation is taken on GiveWheel — we never see your card details.</p>
 
     <form id="donateAnyForm" class="sponsor-form" novalidate>
       <fieldset class="sponsor-form__type" aria-label="Donating as">
@@ -3891,9 +3891,9 @@ html {
       <div class="sponsor-form__error" id="donateAnyError" role="alert" hidden></div>
 
       <button type="submit" class="btn btn-primary" id="donateAnySubmit">
-        Continue to Enthuse · <span id="donateAnyDisplay">£0</span>
+        Continue to GiveWheel · <span id="donateAnyDisplay">£0</span>
       </button>
-      <div class="small">Donation processed by Enthuse · 100% to Alzheimer's Research UK + UKTTBS</div>
+      <div class="small">Donation processed by GiveWheel · 100% to Alzheimer's Research UK + UKTTBS</div>
     </form>
   </div>
 </div>
@@ -3981,7 +3981,7 @@ html {
     <button class="sponsor-glass__close" id="gearBidClose" aria-label="Close">×</button>
     <div class="eyebrow">Corporate Sponsorship</div>
     <h3 id="gearBidTitle">Bid on <strong>Gear</strong>.</h3>
-    <p class="lede">Submit your sealed bid. We will contact the highest bidder when the auction closes to arrange the Enthuse donation and collect logo files.</p>
+    <p class="lede">Submit your sealed bid. We will contact the highest bidder when the auction closes to arrange the GiveWheel donation and collect logo files.</p>
 
     <form id="gearBidForm" class="sponsor-form">
       <input type="hidden" id="gearBidItemName" name="item">
@@ -4049,7 +4049,7 @@ html {
       Alzheimer's Research UK is a registered charity (1077089 & SC042474).<br>
       UK Tea Trade Benevolent Society is a registered charity (275069).</p>
       <p><strong>Privacy & Data:</strong><br>
-      We do not store or see your payment details; all transactions are securely processed by Enthuse. Your email is only used for updates regarding this run.</p>
+      We do not store or see your payment details; all transactions are securely processed by GiveWheel. Your email is only used for updates regarding this run.</p>
     </div>
   </div>
 </div>
@@ -4823,8 +4823,8 @@ function setupSponsorModal() {
    SPONSOR FORM — step 2 of the donation flow.
    Captures donor type / name / message / optional logo, calls
    /api/claim to reserve the pixel, then redirects the donor to
-   Enthuse with the claim_id baked into the URL. The Enthuse
-   webhook (/api/enthuse-webhook) flips the pixel to confirmed
+   GiveWheel with the claim_id baked into the URL. The GiveWheel
+   webhook (/api/GiveWheel-webhook) flips the pixel to confirmed
    when the donation completes.
    ================================================================ */
 const SPONSOR_API = {
@@ -4884,7 +4884,7 @@ function setupSponsorForm() {
     refreshNameLabel();
     refreshLogoVisibility();
     submitBtn.disabled = false;
-    submitBtn.innerHTML = `Continue to Enthuse · <span>£${ctx.amount}</span>`;
+    submitBtn.innerHTML = `Continue to GiveWheel · <span>£${ctx.amount}</span>`;
 
     modal.classList.add('is-open');
     setTimeout(() => nameInput.focus(), 60);
@@ -4980,23 +4980,23 @@ function setupSponsorForm() {
         body:    JSON.stringify(payload),
       });
       const data = await r.json().catch(() => ({}));
-      if (!r.ok || !data.enthuse_url) {
+      if (!r.ok || !data.GiveWheel_url) {
         const msg = ({
           already_claimed: 'This mile has just been sponsored — please pick another.',
           pending:         'Someone else is currently sponsoring this mile — try again in a few minutes.',
           bad_amount:      'Amount mismatch. Please refresh and try again.',
         })[data.error] || 'Something went wrong reserving your mile. Please try again.';
         submitBtn.disabled = false;
-        submitBtn.innerHTML = `Continue to Enthuse · <span>£${ctx.amount}</span>`;
+        submitBtn.innerHTML = `Continue to GiveWheel · <span>£${ctx.amount}</span>`;
         return showError(msg);
       }
-      // Hand the donor over to Enthuse. When they complete the donation
+      // Hand the donor over to GiveWheel. When they complete the donation
       // the webhook flips the pending row to confirmed and the pixel
       // re-renders next time the front-end polls /api/sponsorships.
-      window.location.href = data.enthuse_url;
+      window.location.href = data.GiveWheel_url;
     } catch (err) {
       submitBtn.disabled = false;
-      submitBtn.innerHTML = `Continue to Enthuse · <span>£${ctx.amount}</span>`;
+      submitBtn.innerHTML = `Continue to GiveWheel · <span>£${ctx.amount}</span>`;
       showError('Network error — please check your connection and try again.');
     }
   });
@@ -5010,7 +5010,7 @@ function setupSponsorForm() {
 /* ================================================================
    DONATE ANY AMOUNT — same shape as sponsor form, but no pixel
    claim, no logo, donor picks the amount. Hits /api/donate which
-   returns an Enthuse URL; webhook credits raised_total on success.
+   returns an GiveWheel URL; webhook credits raised_total on success.
    ================================================================ */
 function setupDonateAnyModal() {
   const modal     = document.getElementById('donateAnyModal');
@@ -5031,7 +5031,7 @@ function setupDonateAnyModal() {
     errorEl.hidden = true;
     display.textContent = '£0';
     submitBtn.disabled = false;
-    submitBtn.innerHTML = `Continue to Enthuse · <span id="donateAnyDisplay">£0</span>`;
+    submitBtn.innerHTML = `Continue to GiveWheel · <span id="donateAnyDisplay">£0</span>`;
     refreshNameLabel();
     modal.classList.add('is-open');
     setTimeout(() => amtInput.focus(), 60);
@@ -5097,7 +5097,7 @@ function setupDonateAnyModal() {
     }
 
     submitBtn.disabled = true;
-    submitBtn.innerHTML = 'Redirecting to Enthuse…';
+    submitBtn.innerHTML = 'Redirecting to GiveWheel…';
 
     try {
       const r = await fetch(SPONSOR_API.donate, {
@@ -5106,15 +5106,15 @@ function setupDonateAnyModal() {
         body:    JSON.stringify(payload),
       });
       const data = await r.json().catch(() => ({}));
-      if (!r.ok || !data.enthuse_url) {
+      if (!r.ok || !data.GiveWheel_url) {
         submitBtn.disabled = false;
-        submitBtn.innerHTML = `Continue to Enthuse · <span id="donateAnyDisplay">£${payload.amount}</span>`;
+        submitBtn.innerHTML = `Continue to GiveWheel · <span id="donateAnyDisplay">£${payload.amount}</span>`;
         return showError('Something went wrong starting your donation. Please try again.');
       }
-      window.location.href = data.enthuse_url;
+      window.location.href = data.GiveWheel_url;
     } catch (_) {
       submitBtn.disabled = false;
-      submitBtn.innerHTML = `Continue to Enthuse · <span id="donateAnyDisplay">£${payload.amount}</span>`;
+      submitBtn.innerHTML = `Continue to GiveWheel · <span id="donateAnyDisplay">£${payload.amount}</span>`;
       showError('Network error — please check your connection and try again.');
     }
   });
@@ -5129,7 +5129,7 @@ function setupDonateAnyModal() {
    LIVE DATA SYNC — pull confirmed sponsorships + total raised from
    the API every 30s (and on focus). Updates CONFIG in place and
    re-renders the map pixels + miles grid + raised orb so a donation
-   appears within seconds of completing on Enthuse.
+   appears within seconds of completing on GiveWheel.
    ================================================================ */
 async function refreshSponsorships() {
   try {
@@ -5421,7 +5421,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Pull live sponsorships + total raised from the API on first paint
   // and then poll every 30s. Also refresh whenever the tab regains
-  // focus, so a donor returning from Enthuse sees their pixel update.
+  // focus, so a donor returning from GiveWheel sees their pixel update.
   refreshSponsorships();
   setInterval(refreshSponsorships, 30_000);
   window.addEventListener('focus', refreshSponsorships);
