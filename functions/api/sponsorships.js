@@ -8,6 +8,9 @@ export async function onRequestGet({ env }) {
     const gwRes = await fetch("https://www.givewheel.com/api/fundraisings/16454/donations/");
     if (gwRes.ok) {
       const gwData = await gwRes.json();
+      
+      // Convert the GiveWheel API response to a giant string.
+      // This is a bulletproof trick to find our M12-ABCD codes no matter how GiveWheel structures their data.
       const gwString = JSON.stringify(gwData); 
 
       if (data.pending && data.pending.length > 0) {
@@ -23,7 +26,7 @@ export async function onRequestGet({ env }) {
               sponsor: p.sponsor_name,
               initials: "",
               logo: "",
-              logoBg: "#ea580c", // Make it orange
+              logoBg: p.tier === 'premium' ? "#c5a572" : (p.tier === 'featured' ? "#1a73e8" : "#f56600"), // Map colors
               amount: p.amount,
               tier: p.tier,
               message: p.message

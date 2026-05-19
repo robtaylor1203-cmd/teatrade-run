@@ -22,24 +22,34 @@ export async function onRequestPost({ request, env }) {
     // 3. Generate the unique code
     const lockCode = `M${pixel}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-    // 4. Add to your pending list and save
+    // 4. Capture the dynamic amount from the frontend (50, 100, or 250)
+    const donationAmount = parseInt(body.amount) || 50;
+
+    // 5. Add to your pending list and save
     if (!data.pending) data.pending = [];
     data.pending = data.pending.filter(p => p.pixel !== pixel); // clear old locks
     data.pending.push({
       pixel: pixel,
       code: lockCode,
-      expiresAt: Date.now() + (15 * 60 * 1000), // 15 mins
+      expiresAt: Date.now() + (15 * 60 * 1000), // 15 mins lock
       sponsor_name: body.sponsor_name,
       message: body.message,
       tier: body.tier,
-      amount: body.tier === 'corporate' ? 50 : 20
+      amount: donationAmount
     });
     await env.SPONSORSHIPS_KV.put("data", JSON.stringify(data));
 
-    // 5. Send them to Ollie's exact GiveWheel URL!
+    // 6. Safely encode the Name and Message so they don't break the URL
+    const safeName = encodeURIComponent(body.sponsor_name || "Anonymous");
+    const safeMessage = encodeURIComponent(body.message || "");
+
+    // 7. Send them to Ollie's GiveWheel URL with all parameters attached!
+    // Note: We are assuming Ollie sets up Name as Question 2 and Message as Question 3
     const baseUrl = "https://www.givewheel.com/fundraising/16454/run-teatrade/";
+    const giveWheelUrl = `${baseUrl}?checkout=true&amount=${donationAmount}&d_question_1=${lockCode}&d_question_2=${safeName}&d_question_3=${safeMessage}`;
+
     return Response.json({
-      GiveWheel_url: `${baseUrl}?checkout=true&d_question_1=${lockCode}`,
+      GiveWheel_url: giveWheelUrl,
       code: lockCode 
     });
 
