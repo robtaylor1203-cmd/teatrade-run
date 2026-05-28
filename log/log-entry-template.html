@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>Post Title | TeaTrade Run Log</title>
+    <meta name="description" content="A brief description of this specific training log entry.">
+    
+    <link rel="icon" type="image/png" href="../favicon.png?v=2" />
+
+    <!-- EXACT FONT FROM INDEX.HTML (Roboto Only) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
+
+    <!-- Link to global style.css (update relative path if needed) -->
+    <link rel="stylesheet" href="../style.css">
+    
+    <style>
+        /* =============================================================
+           EXACT RUN SITE CSS (Core Variables & Resets)
+           ============================================================= */
+        :root {
+          --bg:        #f8f9fa;
+          --panel:     #ffffff;
+          --text:      #202124;
+          --muted:     #5f6368;
+          --hairline:  #ececec;
+          --accent:        #1a73e8; 
+          --accent-orange: #f56600;  
+          --gold:          #c5a572;  
+          --gold-deep:     #a88650;  
+          --shadow-sm: 0 1px 2px rgba(0,0,0,.06);
+          --shadow:    0 2px 8px rgba(0,0,0,.08);
+          --shadow-lg: 0 12px 32px rgba(0,0,0,.14);
+          --radius:    8px;
+          --radius-lg: 14px;
+          --maxw:      1240px;
+          --header-h:  64px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body { height: 100%; }
+        body {
+          display: flex;
+          flex-direction: column;
+          font-family: 'Roboto', system-ui, -apple-system, "Segoe UI", sans-serif;
+          background: var(--bg);
+          color: var(--text);
+          font-weight: 400;
+          line-height: 1.55;
+          -webkit-font-smoothing: antialiased;
+        }
+        main { flex: 1 0 auto; padding-top: calc(var(--header-h) + 40px); padding-bottom: 80px; }
+        
+        .container { max-width: var(--maxw); margin: 0 auto; padding: 0 32px; }
+
+        ::selection { background: rgba(245, 102, 0, 0.15); color: var(--accent-orange); }
+        a, button { -webkit-tap-highlight-color: transparent; }
+
+        /* === EXACT HEADER FROM INDEX.HTML === */
+        .site-header { position: fixed; top: 0; left: 0; right: 0; height: var(--header-h); background: rgba(255,255,255,0.92); backdrop-filter: blur(10px) saturate(150%); -webkit-backdrop-filter: blur(10px) saturate(150%); border-bottom: 1px solid var(--hairline); z-index: 1500; transform: translateY(0); transition: transform .25s cubic-bezier(.2,.8,.2,1); }
+        .site-header.is-hidden { transform: translateY(-100%); }
+        .site-header .container { display: flex; align-items: center; justify-content: space-between; height: 100%; }
+        .brand { font-weight: 700; font-size: 1rem; letter-spacing: -0.01em; color: var(--text); text-decoration: none; }
+        .brand .dot { display: inline-block; width: 8px; height: 8px; background: var(--accent-orange); border-radius: 50%; margin: 0 8px 1px; vertical-align: middle; }
+        .brand .sub { color: var(--muted); font-weight: 400; }
+        .nav-links { display: flex; align-items: center; gap: 28px; }
+        .nav-links a { color: var(--muted); font-weight: 400; font-size: 0.92rem; transition: color 0.2s ease; text-decoration: none; }
+        .nav-links a:hover { color: var(--accent-orange); }
+
+        .menu-toggle { display: none; background: transparent; border: none; width: 40px; height: 40px; cursor: pointer; position: relative; z-index: 1600; padding: 0; margin-left: auto; }
+        .hamburger-box { position: relative; width: 24px; height: 18px; margin: 0 auto; }
+        .hamburger-inner, .hamburger-inner::before, .hamburger-inner::after { position: absolute; width: 24px; height: 2px; background-color: var(--text); transition: transform 0.3s ease, background-color 0.2s ease; border-radius: 2px; }
+        .hamburger-inner { top: 50%; left: 0; transform: translateY(-50%); }
+        .hamburger-inner::before { content: ""; top: -8px; left: 0; }
+        .hamburger-inner::after { content: ""; top: 8px; left: 0; }
+        .menu-toggle.is-active .hamburger-inner { background-color: transparent; }
+        .menu-toggle.is-active .hamburger-inner::before { transform: translateY(8px) rotate(45deg); }
+        .menu-toggle.is-active .hamburger-inner::after { transform: translateY(-8px) rotate(-45deg); }
+
+        @media (max-width: 720px) {
+          .menu-toggle { display: block; }
+          .nav-links { position: fixed; top: var(--header-h); left: 0; right: 0; height: calc(100dvh - var(--header-h)); background: rgba(255, 255, 255, 0.97); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); flex-direction: column; justify-content: flex-start; align-items: stretch; padding: 16px 24px; gap: 0; transform: translateY(-10px); opacity: 0; visibility: hidden; transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease, visibility 0.3s; z-index: 1400; border-top: 1px solid var(--hairline); }
+          .nav-links.is-active { transform: translateY(0); opacity: 1; visibility: visible; }
+          .nav-links a { font-size: 1.15rem; color: var(--text); font-weight: 500; padding: 20px 12px; border-bottom: 1px solid var(--hairline); display: flex; justify-content: space-between; align-items: center; }
+          .nav-links a:last-child { border-bottom: none; }
+        }
+
+        /* === POST HEADER & SHARING === */
+        .article-top { margin: 0 auto 32px auto; text-align: left; }
+        .article-breadcrumb { color: var(--accent-orange); text-decoration: none; font-weight: 500; transition: color 0.2s; font-size: 0.95rem; display: inline-block; margin-bottom: 24px; }
+        .article-breadcrumb:hover { text-decoration: underline; }
+        
+        .article-top h1 { font-size: clamp(2.2rem, 5vw, 3.2rem); line-height: 1.1; margin-bottom: 24px; color: var(--text); font-weight: 700; letter-spacing: -0.01em; }
+        
+        .meta-share-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; border-bottom: 1px solid var(--hairline); padding-bottom: 24px; }
+        .article-meta { color: var(--muted); font-size: 0.95rem; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+        .log-tag { background: rgba(245,102,0,0.1); color: var(--accent-orange); padding: 4px 10px; border-radius: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.8rem; }
+        
+        .social-icons { display: flex; gap: 12px; align-items: center; }
+        .social-icons a, .social-icons button { background: none; border: none; padding: 0; color: var(--muted); width: 22px; height: 22px; cursor: pointer; transition: color 0.2s ease, transform 0.2s ease; display: flex; align-items: center; justify-content: center; position: relative;}
+        .social-icons a:hover, .social-icons button:hover { color: var(--accent-orange); transform: translateY(-2px); }
+        .social-icons svg { width: 100%; height: 100%; }
+
+        /* === 2-COLUMN INTRO LAYOUT === */
+        .intro-flex-wrapper { display: flex; gap: 40px; align-items: stretch; margin-bottom: 40px; flex-wrap: wrap; }
+        
+        .intro-text-column { flex: 1.2; min-width: 280px; display: flex; flex-direction: column; justify-content: center; }
+        .intro-text-column p { font-size: 1.15rem; line-height: 1.6; color: var(--muted); font-weight: 300; margin-bottom: 16px; }
+        .intro-text-column p strong { font-weight: 500; color: var(--text); }
+        
+        .intro-image-column { flex: 1; min-width: 260px; max-width: 400px; display: flex; flex-direction: column; justify-content: center; }
+        .intro-image-column img { 
+            width: 100%; height: auto; 
+            aspect-ratio: 4 / 5; /* Forces 4:5 ratio */
+            object-fit: cover; 
+            border-radius: var(--radius-lg); 
+            box-shadow: var(--shadow-sm); 
+            border: 1px solid var(--hairline); 
+        }
+        .caption { font-size: 0.85rem; color: var(--muted); margin-top: 8px; text-align: center; display: block; font-style: italic; }
+
+        /* === ARTICLE CONTENT === */
+        .article-content { margin-top: 40px; text-align: left; }
+        .article-content h2 { font-size: 1.8rem; margin: 48px 0 20px 0; color: var(--text); border-bottom: 2px solid var(--hairline); padding-bottom: 12px; font-weight: 700; }
+        .article-content h3 { font-size: 1.4rem; margin: 32px 0 16px 0; color: var(--text); font-weight: 700; }
+        .article-content p { font-size: 1.05rem; line-height: 1.7; color: var(--text); margin-bottom: 24px; font-weight: 300; }
+        .article-content ul { padding-left: 24px; margin-bottom: 24px; }
+        .article-content li { margin-bottom: 12px; line-height: 1.6; font-size: 1.05rem; color: var(--text); font-weight: 300; }
+        
+        /* Callout Box */
+        .article-callout { background: var(--bg); border: 1.5px solid var(--accent-orange); border-radius: var(--radius-lg); padding: 24px; display: flex; gap: 16px; margin: 32px 0; box-shadow: 0 4px 16px rgba(245,102,0,.08); }
+        .article-callout svg { color: var(--accent-orange); flex-shrink: 0; width: 28px; height: 28px; }
+        .article-callout-content h3 { color: var(--accent-orange); margin: 0 0 8px 0; font-size: 1.15rem; font-weight: 700; padding: 0; border: none; }
+        .article-callout-content p { margin: 0; font-size: 1rem; color: var(--text); line-height: 1.5; font-weight: 300;}
+
+        /* === CONTENT SPLIT: STRAVA LEFT, TEXT RIGHT === */
+        .content-split { display: flex; gap: 40px; align-items: flex-start; margin-bottom: 40px; flex-wrap: wrap; }
+        .content-split__left { flex: 1; min-width: 300px; max-width: 380px; }
+        .content-split__right { flex: 1.5; min-width: 300px; display: flex; flex-direction: column; justify-content: flex-start; }
+
+        /* === STRAVA IN-LINE BOX === */
+        .strava-card { background: var(--panel); border: 1.5px solid var(--accent-orange); border-radius: 22px; padding: 32px; box-shadow: 0 4px 16px rgba(245,102,0,0.08); width: 100%; }
+        .strava-card .eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--accent-orange); font-weight: 500; margin-bottom: 6px; }
+        .strava-card h3 { font-weight: 300; font-size: 1.8rem; letter-spacing: -0.02em; margin: 0 0 6px 0; color: var(--text); }
+        .strava-card h3 strong { font-weight: 500; color: var(--accent-orange); }
+        .strava-card p.lede { color: var(--muted); font-weight: 300; font-size: 0.95rem; margin-bottom: 20px; line-height: 1.5; }
+        .strava-meta { font-size: 0.8rem; color: var(--muted); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+        .strava-meta .dot { width: 8px; height: 8px; border-radius: 50%; background: #fc4c02; display: inline-block; }
+        .strava-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+        .strava-stat { background: var(--bg); border: 1px solid var(--hairline); border-radius: 12px; padding: 16px; }
+        .strava-stat__num { font-size: 1.6rem; font-weight: 500; color: var(--accent-orange); letter-spacing: -0.01em; line-height: 1.1; }
+        .strava-stat__num small { font-size: 0.6em; color: var(--muted); font-weight: 400; margin-left: 4px; }
+        .strava-stat__lbl { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+        
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; font-size: 0.95rem; font-weight: 500; padding: 12px 22px; border-radius: 999px; border: 1px solid transparent; cursor: pointer; text-decoration: none; transition: transform .15s ease, box-shadow .15s ease, background .15s ease; white-space: nowrap; }
+        .btn-primary { background: var(--accent-orange); color: #fff; box-shadow: 0 4px 14px rgba(245,102,0,.35); animation: pulse 2.4s infinite; }
+        .btn-primary:hover { background: #d95800; box-shadow: 0 8px 24px rgba(245,102,0,.45); transform: translateY(-1px); }
+        @keyframes pulse { 0%,100% { box-shadow: 0 4px 14px rgba(245,102,0,.35); } 50% { box-shadow: 0 4px 22px rgba(245,102,0,.65); } }
+
+        /* Horizontal Scroll Mini-Cards */
+        .related-section { margin-top: 80px; border-top: 1px solid var(--hairline); padding-top: 48px; }
+        .related-section h2 { font-size: 1.6rem; font-weight: 700; color: var(--text); margin-bottom: 24px; border: none; }
+        .related-carousel { display: flex; gap: 24px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 32px; -webkit-overflow-scrolling: touch; scrollbar-width: thin; scrollbar-color: var(--accent-orange) rgba(0,0,0,0.04); }
+        .related-carousel::-webkit-scrollbar { height: 6px; }
+        .related-carousel::-webkit-scrollbar-track { background: rgba(0,0,0,0.04); border-radius: 10px; }
+        .related-carousel::-webkit-scrollbar-thumb { background: var(--accent-orange); border-radius: 10px; }
+        .related-card { flex: 0 0 320px; scroll-snap-align: start; background: var(--panel); border: 1px solid var(--hairline); border-radius: 12px; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; display: flex; flex-direction: column; text-decoration: none; color: inherit; }
+        .related-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: rgba(245, 102, 0, 0.3); }
+        .related-card-img { width: 100%; height: 160px; border-radius: 12px 12px 0 0; object-fit: cover; background: #000; }
+        .related-card-body { padding: 20px; display: flex; flex-direction: column; flex-grow: 1; }
+        .related-card h4 { font-size: 1.15rem; font-weight: 500; margin-bottom: 8px; color: var(--text); line-height: 1.3; }
+        .related-card p { font-size: 0.95rem; color: var(--muted); margin-bottom: 16px; flex-grow: 1; line-height: 1.5; font-weight: 300;}
+        .related-card .tag { font-size: 0.75rem; color: var(--accent-orange); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        @media screen and (max-width: 900px) { 
+            .intro-flex-wrapper, .content-split { flex-direction: column; } 
+            .intro-image-column, .content-split__left, .content-split__right { max-width: 100%; width: 100%; }
+            .related-card { flex: 0 0 82vw; }
+        }
+
+        /* === FOOTER & MODALS (Exact from index.html) === */
+        .site-footer { background: var(--panel); border-top: 1px solid var(--hairline); padding: 24px 0; color: var(--muted); font-size: 0.85rem; flex-shrink: 0; margin-top: auto; }
+        .footer-single-line { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+        .footer-right { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+        .footer-link, .footer-btn { color: var(--muted); text-decoration: none; font-weight: 500; background: none; border: none; font-size: 0.85rem; cursor: pointer; transition: color .15s ease; padding: 0; }
+        .footer-link:hover, .footer-btn:hover { color: var(--accent-orange); }
+        .footer-divider { color: #d1d5db; }
+        @media (max-width: 720px) { .footer-single-line { flex-direction: column; justify-content: center; text-align: center; } }
+
+        .sponsor-modal { position: fixed; inset: 0; background: rgba(20, 22, 26, 0.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 20px; }
+        .sponsor-modal.is-open { display: flex; }
+        .sponsor-glass { position: relative; width: 100%; max-width: 480px; padding: 36px 36px 32px; border-radius: 22px; background: var(--panel); border: 1px solid var(--hairline); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18); color: var(--text); transform: scale(0.96); opacity: 0; transition: transform .25s cubic-bezier(.2,.8,.2,1), opacity .25s ease; }
+        .sponsor-modal.is-open .sponsor-glass { transform: scale(1); opacity: 1; }
+        .sponsor-glass__close { position: absolute; top: 14px; right: 18px; background: var(--panel); border: 1px solid var(--hairline); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1.1rem; line-height: 1; color: var(--muted); display:flex; align-items:center; justify-content:center;}
+        .sponsor-glass__close:hover { color: var(--text); border-color: var(--text); }
+        .sponsor-glass h3 { font-weight: 300; font-size: 1.8rem; letter-spacing: -0.02em; margin: 0 0 6px 0; }
+        .sponsor-glass h3 strong { font-weight: 600; color: var(--accent-orange); }
+        .prose p { margin-bottom: 12px; font-weight: 300; line-height: 1.5; color: var(--muted); }
+    </style>
+</head>
+<body>
+
+<!-- SVG Defs -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-arrow" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M7 17 17 7 M9 7h8v8"/>
+    </symbol>
+    <symbol id="i-runner" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M14.5 4.5a1.8 1.8 0 1 1-3.6 0 1.8 1.8 0 0 1 3.6 0z M5 21l3.5-5 1.5-3-2.5-2 2-4 4 1 2 3 3 1 M9 13l-2 4 M14 14l2 3 2 1"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- HEADER -->
+<header class="site-header" id="siteHeader">
+  <div class="container" style="display:flex; justify-content:space-between; align-items:center; height:100%;">
+    <a href="/" class="brand">
+      TeaTrade<span class="dot"></span><span class="sub">Run</span>
+    </a>
+    <nav class="nav-links" id="navLinks">
+      <a href="https://run.teatrade.co.uk/#map-section">The Route</a>
+      <a href="https://run.teatrade.co.uk/#about">The Runner</a>
+      <a href="https://run.teatrade.co.uk">Sponsor a Mile</a>
+      <a href="https://run.teatrade.co.uk/#gear">Sponsor Gear</a>
+      <a href="../log.html" style="color: var(--accent-orange); font-weight: 500;">The Log</a>
+      <a href="https://run.teatrade.co.uk/#faq">FAQ</a>
+      <a href="https://teatrade.co.uk" target="_blank" rel="noopener">TeaTrade <svg style="width:12px;height:12px;vertical-align:-1px;"><use href="#i-arrow"/></svg></a>
+    </nav>
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle Menu" type="button">
+      <div class="hamburger-box"><div class="hamburger-inner"></div></div>
+    </button>
+  </div>
+</header>
+
+<main>
+    <div class="container">
+        
+        <!-- TITLE & SOCIALS -->
+        <div class="article-top">
+            <a href="../log.html" class="article-breadcrumb">&larr; Back to Log</a>
+            <h1>Post Title Goes Here</h1>
+            
+            <div class="meta-share-row">
+                <div class="article-meta">
+                    <span class="log-tag">Nutrition</span>
+                    <span>May 10, 2026</span>
+                    <span>•</span>
+                    <span>Reading Time: X Minutes</span>
+                </div>
+                
+                <div class="social-icons">
+                    <a href="#" aria-label="Share on WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 00-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></a>
+                    <a href="#" aria-label="Share on X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+                    <a href="#" aria-label="Share on Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22.675 0h-21.35c-.732 0-1.325.593-1.325 1.325v21.351c0 .731.593 1.324 1.325 1.324h11.495v-9.294h-3.128v-3.622h3.128v-2.671c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24l-1.918.001c-1.504 0-1.795.715-1.795 1.763v2.312h3.587l-.467 3.622h-3.12v9.293h6.116c.73 0 1.323-.593 1.323-1.325v-21.35c0-.732-.593-1.325-1.325-1.325z"/></svg></a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2-COLUMN INTRO SECTION -->
+        <div class="intro-flex-wrapper">
+            <div class="intro-text-column">
+                <p><strong>This is the strong introductory paragraph. Make it punchy.</strong></p>
+                <p>This is the secondary introductory paragraph providing a little more context before diving into the main content below. The layout here allows the text and image to breathe beautifully.</p>
+            </div>
+            
+            <div class="intro-image-column">
+                <img src="../me.PNG" alt="Description of image" loading="lazy">
+                <span class="caption">Optional image caption goes here.</span>
+            </div>
+        </div>
+
+        <div class="article-content">
+
+            <!-- Insight Box -->
+            <div class="article-callout">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                <div class="article-callout-content">
+                    <h3>Insight Box</h3>
+                    <p>Use this box for specific training insights, gear recommendations, or physiological data points to break up the text before reading further into the article.</p>
+                </div>
+            </div>
+
+            <h2>The First Main Paragraph</h2>
+            
+            <div class="content-split">
+                <!-- STRAVA BREAKOUT BOX (Left) -->
+                <div class="content-split__left">
+                    <div class="strava-card">
+                        <div class="eyebrow">Training log · live from Strava</div>
+                        <h3>Track the <strong>training</strong>.</h3>
+                        <p class="lede">Every run on the road to the start line — stats refresh from my Strava feed.</p>
+                        
+                        <div class="strava-meta">
+                            <span class="dot"></span>
+                            <span id="stravaStatus">Counting from <strong id="stravaSince">today</strong></span>
+                        </div>
+
+                        <div class="strava-stats">
+                            <div class="strava-stat">
+                                <div class="strava-stat__num"><span id="stravaDist">—</span><small>km</small></div>
+                                <div class="strava-stat__lbl">Total distance</div>
+                            </div>
+                            <div class="strava-stat">
+                                <div class="strava-stat__num" id="stravaTime">—</div>
+                                <div class="strava-stat__lbl">Total time</div>
+                            </div>
+                            <div class="strava-stat">
+                                <div class="strava-stat__num" id="stravaPace">—</div>
+                                <div class="strava-stat__lbl">Avg pace / km</div>
+                            </div>
+                            <div class="strava-stat">
+                                <div class="strava-stat__num"><span id="stravaElev">—</span><small>m</small></div>
+                                <div class="strava-stat__lbl">Elevation gain</div>
+                            </div>
+                            <div class="strava-stat" style="grid-column: 1 / -1;">
+                                <div class="strava-stat__num" id="stravaRuns">—</div>
+                                <div class="strava-stat__lbl">Runs logged</div>
+                            </div>
+                        </div>
+
+                        <a class="btn btn-primary" href="https://www.strava.com/athletes/runteatrade" target="_blank" rel="noopener" style="width:100%;justify-content:center;">
+                            View on Strava <svg style="width:16px;height:16px;margin-left:4px;"><use href="#i-arrow"/></svg>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- TEXT CONTENT (Right) -->
+                <div class="content-split__right">
+                    <p>Main body text goes here. The font weight is set to 300 (light) to ensure comfortable reading over long paragraphs.</p>
+                    <p>Another paragraph. You can include bullet points and continue your narrative alongside the live Strava data.</p>
+                    <ul>
+                        <li><strong>Point one:</strong> Description of point one.</li>
+                        <li><strong>Point two:</strong> Description of point two.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h2>Another Section</h2>
+            <p>More text and analysis covering training details, route mapping, or daily struggles. The layout flows naturally back into a single column reading experience below the split section.</p>
+            
+        </div>
+
+        <!-- Horizontal Scroll Mini-Cards -->
+        <div class="related-section">
+            <h2>More from the Log</h2>
+            <div class="related-carousel">
+                
+                <a href="#" class="related-card">
+                    <img src="../me.PNG" class="related-card-img" alt="Post thumbnail" loading="lazy">
+                    <div class="related-card-body">
+                        <h4>Hitting the 100km milestone</h4>
+                        <p>Pushing past the 100km mark in training meant breaking through a massive mental barrier.</p>
+                        <span class="tag">Vlog</span>
+                    </div>
+                </a>
+
+                <a href="#" class="related-card">
+                    <img src="../me.PNG" class="related-card-img" alt="Post thumbnail" loading="lazy">
+                    <div class="related-card-body">
+                        <h4>Shoe rotation strategy</h4>
+                        <p>You cannot run 190 miles in one pair of shoes. Here is my planned rotation.</p>
+                        <span class="tag">Gear</span>
+                    </div>
+                </a>
+
+                <a href="#" class="related-card">
+                    <img src="../me.PNG" class="related-card-img" alt="Post thumbnail" loading="lazy">
+                    <div class="related-card-body">
+                        <h4>The mental fatigue of long runs</h4>
+                        <p>When the physical pain sets in, the mental game takes over completely.</p>
+                        <span class="tag">Mindset</span>
+                    </div>
+                </a>
+
+                <a href="#" class="related-card">
+                    <img src="../me.PNG" class="related-card-img" alt="Post thumbnail" loading="lazy">
+                    <div class="related-card-body">
+                        <h4>Navigating early shin splints</h4>
+                        <p>Increased mileage always brings new aches. Addressing shin splints early.</p>
+                        <span class="tag">Physio</span>
+                    </div>
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<!-- EXACT FOOTER -->
+<footer class="site-footer">
+  <div class="container" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+    <div class="footer-left">© 2026 TeaTrade Run</div>
+    <div class="footer-right" style="display:flex; align-items:center; gap:16px;">
+      <a href="https://teatrade.co.uk" target="_blank" rel="noopener noreferrer" class="footer-link">TeaTrade</a>
+      <span class="footer-divider">·</span>
+      <button class="footer-btn" id="openContact">Contact</button>
+      <span class="footer-divider">·</span>
+      <button class="footer-btn" id="openLegal">Legal & Charities</button>
+    </div>
+  </div>
+</footer>
+
+<!-- EXACT CONTACT MODAL -->
+<div class="sponsor-modal" id="contactModal" role="dialog" aria-modal="true">
+  <div class="sponsor-glass" style="max-width: 400px; text-align: center;">
+    <button class="sponsor-glass__close" id="closeContact" aria-label="Close">×</button>
+    <div class="eyebrow" style="color:var(--accent-orange); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:6px; font-weight:500;">Get in touch</div>
+    <h3>Contact <strong>RunTeaTrade</strong>.</h3>
+    <p class="lede" style="margin-bottom: 24px; color: var(--muted); font-size: 0.95rem; font-weight: 300;">For corporate sponsorships, press, or just to ask about the run, drop me an email.</p>
+    <a href="mailto:contact@teatrade.co.uk" class="btn btn-primary" style="width: 100%; justify-content: center;">
+      contact@teatrade.co.uk
+    </a>
+  </div>
+</div>
+
+<!-- EXACT LEGAL MODAL -->
+<div class="sponsor-modal" id="legalModal" role="dialog" aria-modal="true">
+  <div class="sponsor-glass" style="max-width: 500px;">
+    <button class="sponsor-glass__close" id="closeLegal" aria-label="Close">×</button>
+    <div class="eyebrow" style="color:var(--accent-orange); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.14em; margin-bottom:6px; font-weight:500;">The Details</div>
+    <h3>Legal & <strong>Charities</strong>.</h3>
+    <div class="prose" style="font-size: 0.95rem; margin-top: 16px; color: var(--muted);">
+      <p><strong>Charity Registration:</strong><br>
+      Alzheimer's Research UK is a registered charity (1077089 & SC042474).<br>
+      UK Tea Trade Benevolent Society is a registered charity (275069).</p>
+      <p><strong>Privacy & Data:</strong><br>
+      We do not store or see your payment details; all transactions are securely processed by GiveWheel. Your email is only used for updates regarding this run.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Footer Modals Logic
+  const contactModal = document.getElementById('contactModal');
+  const legalModal = document.getElementById('legalModal');
+  const closeContact = () => contactModal?.classList.remove('is-open');
+  const closeLegal = () => legalModal?.classList.remove('is-open');
+
+  document.getElementById('openContact')?.addEventListener('click', (e) => { e.preventDefault(); contactModal?.classList.add('is-open'); });
+  document.getElementById('openLegal')?.addEventListener('click', (e) => { e.preventDefault(); legalModal?.classList.add('is-open'); });
+  document.getElementById('closeContact')?.addEventListener('click', closeContact);
+  document.getElementById('closeLegal')?.addEventListener('click', closeLegal);
+
+  [contactModal, legalModal].forEach(modal => {
+    modal?.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('is-open'); });
+  });
+
+  // Header Auto-Hide Logic
+  const header = document.getElementById('siteHeader');
+  if (header) {
+    let lastY = window.scrollY;
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          const y = window.scrollY;
+          const delta = y - lastY;
+          if (Math.abs(delta) > 6) {
+            if (y > 80 && delta > 0) header.classList.add('is-hidden');
+            else header.classList.remove('is-hidden');
+            lastY = y;
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }
+    }, { passive: true });
+  }
+
+  // Mobile Menu Logic
+  const menuToggle = document.getElementById('menuToggle');
+  const navLinks = document.getElementById('navLinks');
+  if (menuToggle && navLinks) {
+    menuToggle.addEventListener('click', (e) => {
+      e.preventDefault();
+      menuToggle.classList.toggle('is-active');
+      navLinks.classList.toggle('is-active');
+      document.body.style.overflow = navLinks.classList.contains('is-active') ? 'hidden' : '';
+    });
+  }
+
+  // Strava Fetch Logic
+  (async () => {
+    const SINCE_KEY = 'tt-strava-since';
+    let sinceISO = localStorage.getItem(SINCE_KEY);
+    if (!sinceISO) {
+      sinceISO = new Date().toISOString().slice(0, 10);
+      try { localStorage.setItem(SINCE_KEY, sinceISO); } catch (_) {}
+    }
+    const sinceLabel = new Date(sinceISO).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const sinceEl = document.getElementById('stravaSince');
+    if(sinceEl) sinceEl.textContent = sinceLabel;
+
+    function fmtTime(seconds) {
+      if (!seconds || seconds < 0) return '—';
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    }
+    function fmtPace(secPerMile) {
+      if (!secPerMile || secPerMile <= 0) return '—';
+      const m = Math.floor(secPerMile / 60);
+      const s = Math.round(secPerMile % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+    function paint(stats) {
+      const dist = stats.distance_km ?? 0;
+      const time = stats.moving_time_seconds ?? 0;
+      const elev = stats.elevation_gain_meters ?? 0;
+      const runs = stats.run_count ?? 0;
+      const pace = (dist > 0 && time > 0) ? (time / dist) : 0;
+
+      const distEl = document.getElementById('stravaDist');
+      if(distEl) distEl.textContent = dist.toFixed(1);
+      
+      const timeEl = document.getElementById('stravaTime');
+      if(timeEl) timeEl.textContent = fmtTime(time);
+      
+      const paceEl = document.getElementById('stravaPace');
+      if(paceEl) paceEl.textContent = fmtPace(pace);
+      
+      const elevEl = document.getElementById('stravaElev');
+      if(elevEl) elevEl.textContent = Math.round(elev).toLocaleString('en-GB');
+      
+      const runsEl = document.getElementById('stravaRuns');
+      if(runsEl) runsEl.textContent = runs;
+    }
+    
+    try {
+      const r = await fetch('../strava-stats.json', { cache: 'no-store' });
+      if (r.ok) { const stats = await r.json(); if (stats) paint(stats); }
+    } catch (_) {}
+    try {
+      const live = await fetch('/api/strava-stats', { cache: 'no-store' });
+      if (live.ok) { const stats = await live.json(); if (stats && !stats.error) paint(stats); }
+    } catch (_) {}
+  })();
+});
+</script>
+
+</body>
+</html>
