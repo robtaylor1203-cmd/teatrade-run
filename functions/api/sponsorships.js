@@ -62,28 +62,41 @@ export async function onRequestGet({ env }) {
   let rawSample    = null;
   const attempts   = [];
 
-  // (a) Public summary — no auth required.
-  try {
-    const summaryUrl = `https://www.givewheel.com/api/fundraisings/url/?url=https://www.givewheel.com/fundraising/${fundraisingId}/`;
-    const r = await fetch(summaryUrl, {
-      headers: {
-        "accept":     "application/json",
-        "user-agent": "teatrade-run-reconciler/1.0",
-      },
-      cf: { cacheTtl: 0 },
-    });
-    const txt = await r.text();
-    attempts.push({ what: "summary", status: r.status, snippet: txt.slice(0, 160) });
-    if (r.ok) {
-      const j = JSON.parse(txt);
-      summaryTotal      = Number(j.amount_raised) || Number(j.total_raised) || 0;
-      summarySupporters = Number(j.supporters) || 0;
-    } else {
+  // (a) Public summary — no auth required. The endpoint matches on
+  //     an exact donor-facing URL, so we try a few known forms: the
+  //     gvwhl.com shortlink (confirmed working), then the slugged
+  //     fundraising URL, then the bare id URL.
+  const shortlink   = env.GIVEWHEEL_SHORTLINK || "https://gvwhl.com/ORSR6";
+  const slug        = env.GIVEWHEEL_SLUG      || "run-teatrade";
+  const summaryUrls = [
+    shortlink,
+    `https://www.givewheel.com/fundraising/${fundraisingId}/${slug}/`,
+    `https://www.givewheel.com/fundraising/${fundraisingId}/`,
+  ];
+  for (const candidate of summaryUrls) {
+    try {
+      const summaryUrl = `https://www.givewheel.com/api/fundraisings/url/?url=${encodeURIComponent(candidate)}`;
+      const r = await fetch(summaryUrl, {
+        headers: {
+          "accept":     "application/json",
+          "user-agent": "teatrade-run-reconciler/1.0",
+        },
+        cf: { cacheTtl: 0 },
+      });
+      const txt = await r.text();
+      attempts.push({ what: "summary", url: candidate, status: r.status, snippet: txt.slice(0, 160) });
+      if (r.ok) {
+        const j = JSON.parse(txt);
+        summaryTotal      = Number(j.amount_raised) || Number(j.total_raised) || 0;
+        summarySupporters = Number(j.supporters) || 0;
+        fetchErr = null;
+        break;
+      }
       fetchErr = `summary_http_${r.status}`;
+    } catch (e) {
+      attempts.push({ what: "summary", url: candidate, error: String(e && e.message || e) });
+      fetchErr = "summary_failed";
     }
-  } catch (e) {
-    attempts.push({ what: "summary", error: String(e && e.message || e) });
-    fetchErr = "summary_failed";
   }
 
   // (b) Per-donation list — needs a Knox token. Try the schema's
