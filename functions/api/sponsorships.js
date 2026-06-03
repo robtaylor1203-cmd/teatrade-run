@@ -43,62 +43,97 @@ export async function onRequestGet({ env }) {
     ((p.created_ms || 0) + PENDING_TTL_MS) > now);
   if (data.pending.length !== beforeP || data.general_pending.length !== beforeGP) changed = true;
 
-  // 2. Pull authoritative donations from GiveWheel.
-  let donations = [];
-  let fetchErr  = null;
-  let fetchOk   = false;
-  let rawSample = null;
-  const attempts = [];
+  // 2. Pull authoritative data from GiveWheel.
+  //
+  // Two-tier strategy:
+  //   (a) Always hit /api/fundraisings/url/ — works without auth,
+  //       returns total_raised and supporter count. This is the
+  //       headline-number source of truth.
+  //   (b) Also try /api/fundraisings/{id}/donations/ with a Knox
+  //       Token for per-donation detail (needed to match pixels by
+  //       d_question_1 lock code). If this fails we still have (a)
+  //       so the totals are correct; matching just degrades to
+  //       pending-row-only.
+  let donations    = [];
+  let fetchErr     = null;
+  let donationsOk  = false;
+  let summaryTotal = null;
+  let summarySupporters = null;
+  let rawSample    = null;
+  const attempts   = [];
 
-  if (!token) {
-    fetchErr = "missing_token";
-  } else {
-    // Try Bearer first (per GiveWheel's docs page), then Token
-    // (django-rest-knox default). Some Django setups return 404
-    // instead of 401 when auth fails, so we treat both as retry.
-    const url = `https://www.givewheel.com/api/fundraisings/${fundraisingId}/donations/`;
-    for (const scheme of ["Bearer", "Token"]) {
+  // (a) Public summary — no auth required.
+  try {
+    const summaryUrl = `https://www.givewheel.com/api/fundraisings/url/?url=https://www.givewheel.com/fundraising/${fundraisingId}/`;
+    const r = await fetch(summaryUrl, {
+      headers: {
+        "accept":     "application/json",
+        "user-agent": "teatrade-run-reconciler/1.0",
+      },
+      cf: { cacheTtl: 0 },
+    });
+    const txt = await r.text();
+    attempts.push({ what: "summary", status: r.status, snippet: txt.slice(0, 160) });
+    if (r.ok) {
+      const j = JSON.parse(txt);
+      summaryTotal      = Number(j.amount_raised) || Number(j.total_raised) || 0;
+      summarySupporters = Number(j.supporters) || 0;
+    } else {
+      fetchErr = `summary_http_${r.status}`;
+    }
+  } catch (e) {
+    attempts.push({ what: "summary", error: String(e && e.message || e) });
+    fetchErr = "summary_failed";
+  }
+
+  // (b) Per-donation list — needs a Knox token. Try the schema's
+  //     required prefix ("Token") first, then "Bearer" as a fall-
+  //     back in case GiveWheel has standardised the docs page.
+  if (token) {
+    const donationsUrl = `https://www.givewheel.com/api/fundraisings/${fundraisingId}/donations/`;
+    for (const scheme of ["Token", "Bearer"]) {
       try {
-        const r = await fetch(url, {
+        const r = await fetch(donationsUrl, {
           headers: {
             "authorization": `${scheme} ${token}`,
             "accept":        "application/json",
+            "user-agent":    "teatrade-run-reconciler/1.0",
           },
           cf: { cacheTtl: 0 },
         });
-        const bodyText = await r.text();
+        const txt = await r.text();
         attempts.push({
+          what:    "donations",
           scheme,
           status:  r.status,
-          snippet: bodyText.slice(0, 200),
+          snippet: txt.slice(0, 160),
         });
         if (r.ok) {
-          let payload;
-          try { payload = JSON.parse(bodyText); }
-          catch { fetchErr = "gw_bad_json"; break; }
+          const payload = JSON.parse(txt);
           donations = normaliseDonations(payload);
           rawSample = sampleRawDonation(payload);
-          fetchOk = true;
-          fetchErr = null;
+          donationsOk = true;
           break;
         }
-        if (r.status !== 401 && r.status !== 403 && r.status !== 404) {
-          fetchErr = `gw_http_${r.status}`;
-          break;
-        }
-        fetchErr = `gw_http_${r.status}`;
+        if (r.status !== 401 && r.status !== 403 && r.status !== 404) break;
       } catch (e) {
-        attempts.push({ scheme, error: String(e && e.message || e) });
-        fetchErr = "gw_fetch_failed";
+        attempts.push({ what: "donations", scheme, error: String(e && e.message || e) });
         break;
       }
     }
   }
 
-  // 3. raised_total is the sum of all GW donations when the fetch
-  //    succeeded. If the fetch failed, keep whatever we had so the
-  //    number doesn't blink to 0 during transient errors.
-  if (fetchOk) {
+  // 3. raised_total — prefer the summary endpoint (always works,
+  //    matches what donors see on the GiveWheel page). Fall back
+  //    to summing the donations list if the summary call failed.
+  //    If both failed, leave the existing value so the number
+  //    doesn't blink to 0 on a transient outage.
+  if (summaryTotal != null) {
+    if (summaryTotal !== data.raised_total) {
+      data.raised_total = summaryTotal;
+      changed = true;
+    }
+  } else if (donationsOk) {
     const newTotal = donations.reduce((acc, d) => acc + (d.amount || 0), 0);
     if (newTotal !== data.raised_total) {
       data.raised_total = newTotal;
@@ -107,7 +142,7 @@ export async function onRequestGet({ env }) {
   }
 
   // 4. Match donations to pending pixel claims.
-  if (fetchOk && donations.length) {
+  if (donationsOk && donations.length) {
     const alreadyConfirmed = new Set(
       data.sponsorships.map(s => String(s.gw_id || "")).filter(Boolean)
     );
@@ -222,15 +257,16 @@ export async function onRequestGet({ env }) {
       gw_id: o.gw_id, name: o.name, message: o.message, amount: o.amount, date: o.date,
     })),
     _diag: {
-      gw_fetch_ok:           fetchOk,
-      gw_fetch_err:          fetchErr,
-      gw_donation_count:     donations.length,
-      gw_total_from_api:     donations.reduce((a, d) => a + (d.amount || 0), 0),
+      summary_total:         summaryTotal,
+      summary_supporters:    summarySupporters,
+      donations_ok:          donationsOk,
+      donation_count:        donations.length,
+      fetch_err:             fetchErr,
       pending_count:         data.pending.length,
       general_pending_count: data.general_pending.length,
       orphan_count:          data.orphan_donations.length,
       gw_raw_keys:           rawSample ? Object.keys(rawSample) : null,
-      gw_attempts:           attempts,
+      attempts,
     },
   }), {
     headers: {
