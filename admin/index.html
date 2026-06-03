@@ -206,7 +206,7 @@ function renderSpons(spons) {
   const sorted = [...spons].sort((a, b) => a.pixel - b.pixel);
   root.innerHTML = `
     <table>
-      <thead><tr><th>Mile</th><th>Sponsor</th><th>Amount</th><th>Tier</th><th>Logo</th><th>Logo URL</th><th>Message</th><th></th></tr></thead>
+      <thead><tr><th>Mile</th><th>Sponsor</th><th>Amount</th><th>Tier</th><th>Logo</th><th>Logo URL</th><th>BG</th><th>Message</th><th></th></tr></thead>
       <tbody>
         ${sorted.map(s => `
           <tr data-pixel="${s.pixel}">
@@ -220,8 +220,9 @@ function renderSpons(spons) {
                 <option value="featured"${s.tier==='featured'?' selected':''}>featured</option>
               </select>
             </td>
-            <td>${s.logo ? `<img class="logo-thumb" src="${escapeAttr(s.logo)}" onerror="this.style.display='none'">` : '—'}</td>
+            <td><div class="logo-thumb" style="background:${escapeAttr(s.logoBg || '#5f6368')};display:flex;align-items:center;justify-content:center;">${s.logo ? `<img src="${escapeAttr(s.logo)}" style="max-width:100%;max-height:100%;object-fit:contain;" onerror="this.style.display='none'">` : ''}</div></td>
             <td><input class="logo" value="${escapeAttr(s.logo || '')}" placeholder="https://…/logo.png"></td>
+            <td><input class="logo-bg" type="color" value="${escapeAttr(toHex(s.logoBg) || '#f56600')}" style="width:48px;padding:1px;"></td>
             <td><input class="message" value="${escapeAttr(s.message || '')}"></td>
             <td><button data-action="save">Save</button></td>
           </tr>
@@ -269,6 +270,7 @@ async function saveSponsorship(row) {
     sponsor_name: row.querySelector('.name').value.trim() || existing.sponsor,
     message: row.querySelector('.message').value.trim(),
     logo_url: row.querySelector('.logo').value.trim(),
+    logo_bg:  row.querySelector('.logo-bg').value,
     tier: row.querySelector('.tier').value,
     amount: existing.amount,
     force: true,
@@ -292,6 +294,17 @@ async function postAdmin(body, successMsg) {
 
 function escapeHtml(s) { return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function escapeAttr(s) { return escapeHtml(s); }
+
+// Coerce any CSS colour string to a 7-char #rrggbb for <input type=color>.
+function toHex(c) {
+  if (!c) return '#f56600';
+  c = c.trim();
+  if (/^#[0-9a-f]{6}$/i.test(c)) return c;
+  if (/^#[0-9a-f]{3}$/i.test(c)) {
+    return '#' + c.slice(1).split('').map(ch => ch + ch).join('');
+  }
+  return '#f56600';
+}
 
 if (SECRET) { showApp(); load(); } else { showGate(); }
 </script>

@@ -52,15 +52,21 @@ export async function onRequestPost({ request, env }) {
   const amount      = parseInt(body.amount, 10) || orphan?.amount || prior?.amount || 0;
   const logo        = body.logo_url    ?? prior?.logo ?? "";
 
+  // logoBg precedence: explicit body value → prior value → tier/donor default.
+  const defaultBg = donorType === "corporate" ? "#202124"
+                  : tier === "premium"  ? "#c5a572"
+                  : tier === "featured" ? "#1a73e8"
+                  : "#f56600";
+  const logoBg = (body.logo_bg && /^#[0-9a-f]{3,8}$/i.test(body.logo_bg))
+    ? body.logo_bg
+    : (prior?.logoBg || defaultBg);
+
   const entry = {
     pixel,
     sponsor:  sponsorName,
     initials: initialsFor(sponsorName),
     logo,
-    logoBg:   donorType === "corporate" ? "#202124"
-            : (tier === "premium"  ? "#c5a572"
-            : (tier === "featured" ? "#1a73e8"
-            : "#f56600")),
+    logoBg,
     amount,
     tier,
     message,
