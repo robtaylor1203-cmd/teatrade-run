@@ -144,6 +144,19 @@ export async function onRequestGet({ env }) {
         continue;
       }
 
+      // No pending row, but the donation carries our lock code.
+      // The code is an idempotent identifier (the pending row was
+      // only ever a UI hold to prevent double-bookings during
+      // checkout). Recover the pixel from the code itself.
+      const recovered = recoverFromCode(d, data);
+      if (recovered) {
+        data.sponsorships.push({ ...recovered, gw_id: gwId, confirmed_ms: now });
+        orphanIds.delete(gwId);
+        alreadyConfirmed.add(gwId);
+        changed = true;
+        continue;
+      }
+
       // Unmatched — track as an orphan so it shows up in the donor
       // wall and can be manually assigned to a pixel later.
       if (!orphanIds.has(gwId)) {
@@ -245,6 +258,39 @@ function isMatch(pending, donation) {
 }
 
 // -- helpers -----------------------------------------------------
+
+// If a donation carries our M{pixel}-XXXX lock code and the pixel
+// is still free, reconstruct a sponsorship from the donation data.
+// This is the safety net for donors whose pending row expired
+// before the next sweep ran (or before we deployed reconciliation
+// at all). The lock code itself is the source of truth.
+function recoverFromCode(d, data) {
+  const code = (d.code || "").trim();
+  if (!code) return null;
+  const m = /^M(\d{1,3})-/i.exec(code);
+  if (!m) return null;
+  const pixel = parseInt(m[1], 10);
+  if (!pixel || pixel < 1 || pixel > 190) return null;
+  if (data.sponsorships.some(s => s.pixel === pixel)) return null;
+
+  const tier = d.amount >= 250 ? "patron"
+             : d.amount >= 100 ? "premium"
+             : "standard";
+  const sponsor = d.name || "Anonymous";
+  return {
+    pixel,
+    sponsor,
+    initials: initialsFor(sponsor),
+    logo:     "", // logo only existed in the (now expired) pending row
+    logoBg:   tier === "patron"  ? "#1a73e8"
+            : tier === "premium" ? "#c5a572"
+            : "#f56600",
+    amount:   d.amount,
+    tier,
+    message:  d.message || "",
+    recovered_from_code: true,
+  };
+}
 
 function normaliseDonations(payload) {
   const list = listFromPayload(payload);
