@@ -99,39 +99,61 @@ export async function onRequestGet({ env }) {
     }
   }
 
-  // (b) Per-donation list — needs a Knox token. Try the schema's
-  //     required prefix ("Token") first, then "Bearer" as a fall-
-  //     back in case GiveWheel has standardised the docs page.
+  // (b) Per-donation list — needs a Knox token. The OpenAPI schema
+  //     documents /api/fundraisings/{id}/donations/ but that path
+  //     currently 404s. Try a handful of plausible variants so that
+  //     if GiveWheel exposes the data under any of them we'll pick
+  //     it up automatically. Each attempt is logged in _diag for
+  //     post-mortem inspection.
   if (token) {
-    const donationsUrl = `https://www.givewheel.com/api/fundraisings/${fundraisingId}/donations/`;
-    for (const scheme of ["Token", "Bearer"]) {
-      try {
-        const r = await fetch(donationsUrl, {
-          headers: {
-            "authorization": `${scheme} ${token}`,
-            "accept":        "application/json",
-            "user-agent":    "teatrade-run-reconciler/1.0",
-          },
-          cf: { cacheTtl: 0 },
-        });
-        const txt = await r.text();
-        attempts.push({
-          what:    "donations",
-          scheme,
-          status:  r.status,
-          snippet: txt.slice(0, 160),
-        });
-        if (r.ok) {
-          const payload = JSON.parse(txt);
-          donations = normaliseDonations(payload);
-          rawSample = sampleRawDonation(payload);
-          donationsOk = true;
-          break;
+    const candidates = [
+      `https://www.givewheel.com/api/fundraisings/${fundraisingId}/donations/`,
+      `https://www.givewheel.com/api/fundraisings/${fundraisingId}/donations`,
+      `https://www.givewheel.com/api/donations/?fundraising=${fundraisingId}`,
+      `https://www.givewheel.com/api/donations/?fundraising_id=${fundraisingId}`,
+      `https://www.givewheel.com/api/donations/?fundraisings=${fundraisingId}`,
+      `https://www.givewheel.com/api/fundraisings/${fundraisingId}/donations/list/`,
+      `https://www.givewheel.com/api/fundraisings/${fundraisingId}/donation_list/`,
+      `https://www.givewheel.com/api/fundraisings/${fundraisingId}/supporters/`,
+    ];
+    outer:
+    for (const donationsUrl of candidates) {
+      for (const scheme of ["Token", "Bearer"]) {
+        try {
+          const r = await fetch(donationsUrl, {
+            headers: {
+              "authorization": `${scheme} ${token}`,
+              "accept":        "application/json",
+              "user-agent":    "teatrade-run-reconciler/1.0",
+            },
+            cf: { cacheTtl: 0 },
+          });
+          const txt = await r.text();
+          attempts.push({
+            what:    "donations",
+            url:     donationsUrl,
+            scheme,
+            status:  r.status,
+            snippet: txt.slice(0, 160),
+          });
+          if (r.ok) {
+            try {
+              const payload = JSON.parse(txt);
+              const list = listFromPayload(payload);
+              if (list.length || Array.isArray(payload)) {
+                donations = normaliseDonations(payload);
+                rawSample = sampleRawDonation(payload);
+                donationsOk = true;
+                break outer;
+              }
+            } catch { /* not JSON — keep trying other candidates */ }
+          }
+          // 401/403 means auth scheme wrong on this path — try other scheme.
+          // 404 means path wrong — break inner, move to next path.
+          if (r.status === 404) break;
+        } catch (e) {
+          attempts.push({ what: "donations", url: donationsUrl, scheme, error: String(e && e.message || e) });
         }
-        if (r.status !== 401 && r.status !== 403 && r.status !== 404) break;
-      } catch (e) {
-        attempts.push({ what: "donations", scheme, error: String(e && e.message || e) });
-        break;
       }
     }
   }

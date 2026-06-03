@@ -1,0 +1,26 @@
+name: Poll sponsorships
+
+# Pings /api/sponsorships on a schedule so reconciliation runs
+# even when nobody is viewing the page. GiveWheel donations get
+# matched to pending pixels (or recorded as orphans) within a few
+# minutes of being made, instead of waiting for the next visitor.
+#
+# GitHub Actions minimum cron interval is 5 minutes.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Hit /api/sponsorships
+        run: |
+          curl -fsS -o /tmp/resp.json -w 'HTTP %{http_code} in %{time_total}s\n' \
+            https://run.teatrade.co.uk/api/sponsorships
+          # Print just the diagnostic block so the run log is useful
+          # if reconciliation starts failing silently.
+          python3 -c "import json,sys; d=json.load(open('/tmp/resp.json')); print(json.dumps({'raised_total': d.get('raised_total'), 'pending': d.get('pending_pixels'), 'orphans': len(d.get('orphan_donations',[])), '_diag': d.get('_diag')}, indent=2))"
