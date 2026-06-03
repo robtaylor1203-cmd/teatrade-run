@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Run TeaTrade — Admin</title>
+  <style>
+    :root { --orange:#f56600; --gold:#c5a572; --blue:#1a73e8; --ink:#202124; --bg:#fafafa; --border:#e0e0e0; }
+    * { box-sizing: border-box; }
+    body { font: 14px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; margin: 0; background: var(--bg); color: var(--ink); }
+    header { padding: 18px 24px; border-bottom: 1px solid var(--border); background: white; display: flex; align-items: center; justify-content: space-between; }
+    header h1 { margin: 0; font-size: 18px; }
+    header .meta { color: #666; font-size: 12px; }
+    main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    section { background: white; border: 1px solid var(--border); border-radius: 6px; padding: 16px 18px; margin-bottom: 18px; }
+    section h2 { margin: 0 0 12px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+    .badge { display: inline-block; background: #eee; color: #555; padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .badge.warn { background: #ffe9c2; color: #8a5500; }
+    .badge.ok { background: #d4f5d0; color: #1f6d1f; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+    th { font-weight: 600; color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+    tr:last-child td { border-bottom: none; }
+    input, select, button { font: inherit; padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; background: white; }
+    input[type=number] { width: 70px; }
+    input.logo, input.name, input.message { width: 100%; min-width: 140px; }
+    button { background: var(--orange); color: white; border-color: var(--orange); cursor: pointer; font-weight: 600; }
+    button.secondary { background: white; color: var(--ink); border-color: #ccc; font-weight: 500; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .empty { color: #888; font-style: italic; padding: 8px 0; }
+    .logo-thumb { width: 28px; height: 28px; object-fit: contain; background: #f3f3f3; border-radius: 4px; }
+    .gate { max-width: 380px; margin: 80px auto; background: white; padding: 28px; border-radius: 6px; border: 1px solid var(--border); }
+    .gate h1 { margin: 0 0 12px; font-size: 18px; }
+    .gate p { color: #666; margin: 0 0 16px; font-size: 13px; }
+    .gate input { width: 100%; margin-bottom: 12px; padding: 8px 10px; }
+    .gate button { width: 100%; padding: 9px; }
+    .toast { position: fixed; bottom: 20px; right: 20px; background: var(--ink); color: white; padding: 10px 14px; border-radius: 4px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 340px; }
+    .toast.show { opacity: 1; }
+    .toast.error { background: #c0392b; }
+    code { background: #f3f3f3; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+<div id="gate" class="gate" hidden>
+  <h1>Admin access</h1>
+  <p>Enter your <code>ADMIN_SECRET</code>. Stored only for this browser session.</p>
+  <input id="secret" type="password" placeholder="ADMIN_SECRET" autocomplete="off">
+  <button id="login">Unlock</button>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <h1>Run TeaTrade Admin</h1>
+    <div class="meta">
+      <span id="totals"></span>
+      &nbsp;·&nbsp; <a href="/" style="color:#666">view site</a>
+      &nbsp;·&nbsp; <button class="secondary" id="refresh">Refresh</button>
+      &nbsp;·&nbsp; <button class="secondary" id="logout">Log out</button>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <h2>Unattributed donations <span class="badge warn" id="orphan-badge">0</span></h2>
+      <p style="color:#666;margin:0 0 12px">Donations GiveWheel has received but we haven't matched to a mile. Pick a mile, optionally fix the name/logo, click Assign.</p>
+      <div id="orphans"></div>
+    </section>
+
+    <section>
+      <h2>Sponsored miles <span class="badge ok" id="spons-badge">0</span></h2>
+      <p style="color:#666;margin:0 0 12px">Live on the site. Edit a logo URL or sponsor name and click Save to overwrite. Mile and GiveWheel ID stay fixed.</p>
+      <div id="sponsorships"></div>
+    </section>
+
+    <section>
+      <h2>Pending claims (in checkout) <span class="badge" id="pending-badge">0</span></h2>
+      <p style="color:#666;margin:0 0 12px">Donors mid-checkout. Auto-clears after 30&nbsp;min if no donation completes.</p>
+      <div id="pending"></div>
+    </section>
+
+    <section>
+      <h2>Diagnostics</h2>
+      <pre id="diag" style="background:#f6f6f6;padding:10px;border-radius:4px;overflow:auto;font-size:12px;margin:0"></pre>
+    </section>
+  </main>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const SECRET_KEY = 'rtt_admin_secret';
+let SECRET = sessionStorage.getItem(SECRET_KEY) || '';
+let DATA = null;
+
+const $ = sel => document.querySelector(sel);
+
+function toast(msg, error = false) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.toggle('error', error);
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function showGate() { $('#gate').hidden = false; $('#app').hidden = true; }
+function showApp()  { $('#gate').hidden = true;  $('#app').hidden = false; }
+
+$('#login').onclick = async () => {
+  const v = $('#secret').value.trim();
+  if (!v) return;
+  // Try a no-op call to verify the secret works.
+  const ok = await testSecret(v);
+  if (!ok) { toast('Invalid secret', true); return; }
+  SECRET = v;
+  sessionStorage.setItem(SECRET_KEY, v);
+  showApp();
+  load();
+};
+
+$('#secret')?.addEventListener('keydown', e => { if (e.key === 'Enter') $('#login').click(); });
+$('#logout').onclick = () => { sessionStorage.removeItem(SECRET_KEY); SECRET = ''; location.reload(); };
+$('#refresh').onclick = load;
+
+async function testSecret(secret) {
+  // Send an intentionally invalid pixel — if secret is right we get 400 bad_pixel,
+  // if wrong we get 403 forbidden. Lets us validate without mutating anything.
+  try {
+    const r = await fetch('/api/admin/assign-pixel', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ secret, pixel: 0, gw_id: 'probe' }),
+    });
+    return r.status !== 403;
+  } catch { return false; }
+}
+
+async function load() {
+  try {
+    const r = await fetch('/api/sponsorships', { cache: 'no-store' });
+    DATA = await r.json();
+    render();
+  } catch (e) { toast('Failed to load data: ' + e.message, true); }
+}
+
+function render() {
+  if (!DATA) return;
+  const raised = DATA.raised_total || 0;
+  const goal = DATA.raised_goal || 19000;
+  $('#totals').textContent = `£${raised.toLocaleString()} / £${goal.toLocaleString()} raised`;
+
+  // We need the full server state including orphans + pending detail.
+  // /api/sponsorships exposes orphan_donations + pending_pixels publicly.
+  const orphans = DATA.orphan_donations || [];
+  const spons   = DATA.sponsorships || [];
+  const pendingPixels = DATA.pending_pixels || [];
+
+  $('#orphan-badge').textContent = orphans.length;
+  $('#spons-badge').textContent  = spons.length;
+  $('#pending-badge').textContent = pendingPixels.length;
+
+  renderOrphans(orphans);
+  renderSpons(spons);
+  renderPending(pendingPixels);
+  $('#diag').textContent = JSON.stringify(DATA._diag || {}, null, 2);
+}
+
+function renderOrphans(orphans) {
+  const root = $('#orphans');
+  if (!orphans.length) { root.innerHTML = '<div class="empty">No unattributed donations.</div>'; return; }
+  const used = new Set((DATA.sponsorships || []).map(s => s.pixel));
+  root.innerHTML = `
+    <table>
+      <thead><tr><th>Donor</th><th>Amount</th><th>Message</th><th>GW ID</th><th>Mile</th><th>Logo URL</th><th>Tier</th><th></th></tr></thead>
+      <tbody>
+        ${orphans.map((o, i) => `
+          <tr data-row="${i}">
+            <td><input class="name" value="${escapeAttr(o.name)}"></td>
+            <td>£${o.amount}</td>
+            <td><input class="message" value="${escapeAttr(o.message)}"></td>
+            <td><code>${escapeHtml(o.gw_id)}</code></td>
+            <td><input class="pixel" type="number" min="1" max="190" placeholder="1-190"></td>
+            <td><input class="logo" placeholder="https://…/logo.png"></td>
+            <td>
+              <select class="tier">
+                <option value="standard">standard</option>
+                <option value="premium">premium</option>
+                <option value="featured">featured</option>
+              </select>
+            </td>
+            <td><button data-action="assign" data-i="${i}">Assign</button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+  root.querySelectorAll('button[data-action=assign]').forEach(btn => {
+    btn.onclick = () => assignOrphan(orphans[btn.dataset.i], btn.closest('tr'), used);
+  });
+}
+
+function renderSpons(spons) {
+  const root = $('#sponsorships');
+  if (!spons.length) { root.innerHTML = '<div class="empty">No sponsored miles yet.</div>'; return; }
+  const sorted = [...spons].sort((a, b) => a.pixel - b.pixel);
+  root.innerHTML = `
+    <table>
+      <thead><tr><th>Mile</th><th>Sponsor</th><th>Amount</th><th>Tier</th><th>Logo</th><th>Logo URL</th><th>Message</th><th></th></tr></thead>
+      <tbody>
+        ${sorted.map(s => `
+          <tr data-pixel="${s.pixel}">
+            <td><strong>${s.pixel}</strong></td>
+            <td><input class="name" value="${escapeAttr(s.sponsor)}"></td>
+            <td>£${s.amount}</td>
+            <td>
+              <select class="tier">
+                <option value="standard"${s.tier==='standard'?' selected':''}>standard</option>
+                <option value="premium"${s.tier==='premium'?' selected':''}>premium</option>
+                <option value="featured"${s.tier==='featured'?' selected':''}>featured</option>
+              </select>
+            </td>
+            <td>${s.logo ? `<img class="logo-thumb" src="${escapeAttr(s.logo)}" onerror="this.style.display='none'">` : '—'}</td>
+            <td><input class="logo" value="${escapeAttr(s.logo || '')}" placeholder="https://…/logo.png"></td>
+            <td><input class="message" value="${escapeAttr(s.message || '')}"></td>
+            <td><button data-action="save">Save</button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+  root.querySelectorAll('button[data-action=save]').forEach(btn => {
+    btn.onclick = () => saveSponsorship(btn.closest('tr'));
+  });
+}
+
+function renderPending(pixels) {
+  const root = $('#pending');
+  if (!pixels.length) { root.innerHTML = '<div class="empty">No pending claims.</div>'; return; }
+  root.innerHTML = '<div>Miles currently locked in checkout: ' + pixels.map(p => `<code>#${p}</code>`).join(' ') + '</div>';
+}
+
+async function assignOrphan(orphan, row, used) {
+  const pixel = parseInt(row.querySelector('.pixel').value, 10);
+  if (!pixel || pixel < 1 || pixel > 190) { toast('Pick a mile 1-190', true); return; }
+  if (used.has(pixel) && !confirm(`Mile ${pixel} is already taken. Overwrite?`)) return;
+
+  const body = {
+    secret: SECRET,
+    pixel,
+    gw_id: orphan.gw_id,
+    sponsor_name: row.querySelector('.name').value.trim() || orphan.name,
+    message: row.querySelector('.message').value.trim() || orphan.message,
+    logo_url: row.querySelector('.logo').value.trim() || undefined,
+    tier: row.querySelector('.tier').value,
+    amount: orphan.amount,
+    force: used.has(pixel),
+  };
+  await postAdmin(body, `Mile ${pixel} assigned`);
+}
+
+async function saveSponsorship(row) {
+  const existing = (DATA.sponsorships || []).find(s => s.pixel === parseInt(row.dataset.pixel, 10));
+  if (!existing) return;
+  const body = {
+    secret: SECRET,
+    pixel: existing.pixel,
+    gw_id: existing.gw_id || `manual-mile${existing.pixel}`,
+    sponsor_name: row.querySelector('.name').value.trim() || existing.sponsor,
+    message: row.querySelector('.message').value.trim(),
+    logo_url: row.querySelector('.logo').value.trim(),
+    tier: row.querySelector('.tier').value,
+    amount: existing.amount,
+    force: true,
+  };
+  await postAdmin(body, `Mile ${existing.pixel} updated`);
+}
+
+async function postAdmin(body, successMsg) {
+  try {
+    const r = await fetch('/api/admin/assign-pixel', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const j = await r.json();
+    if (!r.ok || j.error) { toast(j.error || `HTTP ${r.status}`, true); return; }
+    toast(successMsg);
+    await load();
+  } catch (e) { toast(e.message, true); }
+}
+
+function escapeHtml(s) { return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s) { return escapeHtml(s); }
+
+if (SECRET) { showApp(); load(); } else { showGate(); }
+</script>
+</body>
+</html>

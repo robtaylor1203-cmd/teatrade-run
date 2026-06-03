@@ -10,7 +10,9 @@
  * Body:
  *   { secret: "...", pixel: 63, gw_id: "12345",
  *     sponsor_name?: "Rob", message?: "Go!", donor_type?: "individual",
- *     tier?: "standard" }
+ *     tier?: "standard", logo_url?: "https://...",
+ *     force?: true  // overwrite if the pixel is already taken
+ *   }
  *
  * Secret is checked against env.ADMIN_SECRET.
  */
@@ -23,6 +25,7 @@ export async function onRequestPost({ request, env }) {
 
   const pixel = parseInt(body.pixel, 10);
   const gwId  = String(body.gw_id || "").trim();
+  const force = body.force === true;
   if (!pixel || pixel < 1 || pixel > 190) return j({ error: "bad_pixel" }, 400);
   if (!gwId) return j({ error: "bad_gw_id" }, 400);
 
@@ -32,25 +35,28 @@ export async function onRequestPost({ request, env }) {
   data.pending          = data.pending          || [];
   data.orphan_donations = data.orphan_donations || [];
 
-  if (data.sponsorships.some(s => s.pixel === pixel)) {
-    return j({ error: "pixel_already_claimed" }, 409);
-  }
-  if (data.sponsorships.some(s => String(s.gw_id) === gwId)) {
-    return j({ error: "donation_already_attributed" }, 409);
+  const existingPixelIdx    = data.sponsorships.findIndex(s => s.pixel === pixel);
+  const existingDonationIdx = data.sponsorships.findIndex(s => String(s.gw_id) === gwId);
+
+  if (!force) {
+    if (existingPixelIdx >= 0)    return j({ error: "pixel_already_claimed",        hint: "pass force:true to overwrite" }, 409);
+    if (existingDonationIdx >= 0) return j({ error: "donation_already_attributed", hint: "pass force:true to overwrite" }, 409);
   }
 
-  const orphan = data.orphan_donations.find(o => String(o.gw_id) === gwId);
-  const tier   = body.tier || "standard";
-  const donorType = body.donor_type || "individual";
-  const sponsorName = body.sponsor_name || orphan?.name || "Anonymous";
-  const message     = body.message     || orphan?.message || "";
-  const amount      = orphan?.amount   || parseInt(body.amount, 10) || 0;
+  const orphan      = data.orphan_donations.find(o => String(o.gw_id) === gwId);
+  const prior       = existingPixelIdx >= 0 ? data.sponsorships[existingPixelIdx] : null;
+  const tier        = body.tier        || prior?.tier        || "standard";
+  const donorType   = body.donor_type  || "individual";
+  const sponsorName = body.sponsor_name || orphan?.name      || prior?.sponsor || "Anonymous";
+  const message     = body.message      || orphan?.message   || prior?.message || "";
+  const amount      = parseInt(body.amount, 10) || orphan?.amount || prior?.amount || 0;
+  const logo        = body.logo_url    ?? prior?.logo ?? "";
 
-  data.sponsorships.push({
+  const entry = {
     pixel,
     sponsor:  sponsorName,
     initials: initialsFor(sponsorName),
-    logo:     body.logo_url || "",
+    logo,
     logoBg:   donorType === "corporate" ? "#202124"
             : (tier === "premium"  ? "#c5a572"
             : (tier === "featured" ? "#1a73e8"
@@ -59,9 +65,17 @@ export async function onRequestPost({ request, env }) {
     tier,
     message,
     gw_id:        gwId,
-    confirmed_ms: Date.now(),
+    confirmed_ms: prior?.confirmed_ms || Date.now(),
     manually_assigned: true,
-  });
+  };
+
+  if (existingPixelIdx >= 0) {
+    data.sponsorships[existingPixelIdx] = entry;
+  } else if (existingDonationIdx >= 0) {
+    data.sponsorships[existingDonationIdx] = entry;
+  } else {
+    data.sponsorships.push(entry);
+  }
 
   // Remove from pending and orphans if present.
   data.pending          = data.pending.filter(p => p.pixel !== pixel);
@@ -70,7 +84,7 @@ export async function onRequestPost({ request, env }) {
   data.updated = new Date().toISOString();
   await env.SPONSORSHIPS_KV.put("data", JSON.stringify(data));
 
-  return j({ ok: true, pixel, gw_id: gwId, amount });
+  return j({ ok: true, pixel, gw_id: gwId, amount, updated: force && (existingPixelIdx >= 0 || existingDonationIdx >= 0) });
 }
 
 function initialsFor(name) {
