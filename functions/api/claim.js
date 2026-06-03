@@ -48,10 +48,12 @@ export async function onRequestPost({ request, env }) {
     const safeName = encodeURIComponent(body.sponsor_name || "Anonymous");
     const safeMessage = encodeURIComponent(body.message || "");
 
-    // 7. Send them to Ollie's GiveWheel URL with all parameters attached!
-    // Note: We are assuming Ollie sets up Name as Question 2 and Message as Question 3
+    // 7. Send them to GiveWheel's checkout URL with all parameters attached.
+    //    Per Ollie: param is `donation` (not `amount`), and `lock_amount=true`
+    //    prevents the donor changing it on the GW page (so our amount-based
+    //    matching stays sound). Questions: 1 = lock code, 2 = name, 3 = message.
     const baseUrl = "https://www.givewheel.com/fundraising/16454/run-teatrade/";
-    const giveWheelUrl = `${baseUrl}?checkout=true&amount=${donationAmount}&d_question_1=${lockCode}&d_question_2=${safeName}&d_question_3=${safeMessage}`;
+    const giveWheelUrl = `${baseUrl}?checkout=true&donation=${donationAmount}&lock_amount=true&d_question_1=${lockCode}&d_question_2=${safeName}&d_question_3=${safeMessage}`;
 
     return Response.json({
       GiveWheel_url: giveWheelUrl,
