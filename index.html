@@ -49,11 +49,6 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
-<!-- Cloudinary upload widget — used by the Sponsor form for optional
-     company logo uploads. Returns a hosted URL we forward to GiveWheel
-     and persist on the confirmed pixel. -->
-<script src="https://upload-widget.cloudinary.com/global/all.js" async></script>
-
 <style>
 /* =============================================================
    ROOT — two accents (orange + blue), neutral palette,
@@ -4674,12 +4669,12 @@ const SPONSOR_API = {
   list:  '/api/sponsorships',
   donate:'/api/donate',
 };
-const CLOUDINARY = {
-  // Set these via search/replace before going live, or via a build-time
-  // template if you prefer. Unsigned upload preset only — no secrets here.
-  cloudName:    'YOUR_CLOUDINARY_CLOUD',
-  uploadPreset: 'teatrade_run_logos',
-};
+// Logo uploads are handled entirely client-side: the file is read,
+// resized to a 256px square and stored as a data URL in the hidden
+// logo_url field. No external upload service is involved.
+const LOGO_MAX_BYTES = 2 * 1024 * 1024;       // 2 MB raw file cap
+const LOGO_OUTPUT_SIZE = 256;                  // output square size (px)
+const LOGO_ALLOWED_TYPES = ['image/png','image/jpeg','image/webp','image/svg+xml'];
 
 let openSponsorForm = () => {};
 
@@ -4720,8 +4715,7 @@ function setupSponsorForm() {
     // Reset state.
     form.reset();
     errorEl.hidden = true;
-    logoUrlEl.value = '';
-    logoStatus.textContent = 'No file selected';
+    if (typeof resetLogo === 'function') resetLogo(); else { logoUrlEl.value = ''; logoStatus.textContent = 'No file selected'; }
     refreshNameLabel();
     refreshLogoVisibility();
     submitBtn.disabled = false;
@@ -4757,38 +4751,96 @@ function setupSponsorForm() {
   function refreshLogoVisibility() {
     logoField.hidden = donorType() !== 'corporate';
     if (logoField.hidden) {
-      logoUrlEl.value = '';
-      logoStatus.textContent = 'No file selected';
+      if (typeof resetLogo === 'function') resetLogo(); else { logoUrlEl.value = ''; logoStatus.textContent = 'No file selected'; }
     }
   }
 
-  // Cloudinary unsigned upload widget — opens an overlay for the file
-  // pick + crop, returns a hosted URL we drop into the form.
-  let widget;
-  logoBtn.addEventListener('click', () => {
-    if (typeof window.cloudinary === 'undefined') {
-      logoStatus.textContent = 'Upload widget still loading — try again in a moment.';
+  // Local-only logo picker. Opens a native file dialog, validates the
+  // file, resizes raster images to a 256px square and stores the result
+  // as a data URL in the hidden logo_url field. A small preview is
+  // rendered next to the status text.
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = LOGO_ALLOWED_TYPES.join(',');
+  fileInput.hidden = true;
+  logoBtn.insertAdjacentElement('afterend', fileInput);
+
+  const preview = document.createElement('img');
+  preview.alt = '';
+  preview.style.cssText = 'width:32px;height:32px;object-fit:contain;border-radius:4px;border:1px solid var(--hairline);background:#fff;display:none;margin-right:8px;';
+  logoStatus.insertAdjacentElement('beforebegin', preview);
+
+  function resetLogo(msg) {
+    logoUrlEl.value = '';
+    preview.src = '';
+    preview.style.display = 'none';
+    logoStatus.textContent = msg || 'No file selected';
+    fileInput.value = '';
+  }
+
+  function setLogo(dataUrl) {
+    logoUrlEl.value = dataUrl;
+    preview.src = dataUrl;
+    preview.style.display = 'inline-block';
+    logoStatus.textContent = '✓ Logo ready';
+  }
+
+  function resizeRasterToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = LOGO_OUTPUT_SIZE;
+          canvas.height = LOGO_OUTPUT_SIZE;
+          const ctx2d = canvas.getContext('2d');
+          ctx2d.fillStyle = '#ffffff';
+          ctx2d.fillRect(0, 0, LOGO_OUTPUT_SIZE, LOGO_OUTPUT_SIZE);
+          const scale = Math.min(LOGO_OUTPUT_SIZE / img.width, LOGO_OUTPUT_SIZE / img.height);
+          const w = img.width * scale;
+          const h = img.height * scale;
+          ctx2d.drawImage(img, (LOGO_OUTPUT_SIZE - w) / 2, (LOGO_OUTPUT_SIZE - h) / 2, w, h);
+          URL.revokeObjectURL(url);
+          resolve(canvas.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.9));
+        } catch (err) { URL.revokeObjectURL(url); reject(err); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode_failed')); };
+      img.src = url;
+    });
+  }
+
+  function readSvgAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('read_failed'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  logoBtn.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    if (!LOGO_ALLOWED_TYPES.includes(file.type)) {
+      resetLogo('Unsupported file type — use PNG, JPG, WebP or SVG.');
       return;
     }
-    if (!widget) {
-      widget = window.cloudinary.createUploadWidget({
-        cloudName:    CLOUDINARY.cloudName,
-        uploadPreset: CLOUDINARY.uploadPreset,
-        sources:      ['local', 'url'],
-        multiple:     false,
-        cropping:     true,
-        croppingAspectRatio: 1,
-        clientAllowedFormats: ['png', 'jpg', 'jpeg', 'svg', 'webp'],
-        maxFileSize:  2 * 1024 * 1024,
-      }, (err, result) => {
-        if (err) { logoStatus.textContent = 'Upload failed — try again.'; return; }
-        if (result?.event === 'success') {
-          logoUrlEl.value = result.info.secure_url;
-          logoStatus.textContent = '✓ Logo uploaded';
-        }
-      });
+    if (file.size > LOGO_MAX_BYTES) {
+      resetLogo('File too large — keep it under 2 MB.');
+      return;
     }
-    widget.open();
+    logoStatus.textContent = 'Processing…';
+    try {
+      const dataUrl = file.type === 'image/svg+xml'
+        ? await readSvgAsDataUrl(file)
+        : await resizeRasterToDataUrl(file);
+      setLogo(dataUrl);
+    } catch (err) {
+      resetLogo('Could not read that file — please try another.');
+    }
   });
 
   form.addEventListener('submit', async (e) => {
