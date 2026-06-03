@@ -28,14 +28,19 @@ export async function onRequestPost({ request, env }) {
     // 5. Add to your pending list and save
     if (!data.pending) data.pending = [];
     data.pending = data.pending.filter(p => p.pixel !== pixel); // clear old locks
+    const nowMs = Date.now();
     data.pending.push({
       pixel: pixel,
       code: lockCode,
-      expiresAt: Date.now() + (15 * 60 * 1000), // 15 mins lock
+      claim_id: lockCode,
+      created_ms: nowMs,
+      expiresAt: nowMs + (30 * 60 * 1000), // 30 mins lock
       sponsor_name: body.sponsor_name,
+      donor_type: body.donor_type || "individual",
       message: body.message,
       tier: body.tier,
-      amount: donationAmount
+      amount: donationAmount,
+      logo_url: body.logo_url || null
     });
     await env.SPONSORSHIPS_KV.put("data", JSON.stringify(data));
 
