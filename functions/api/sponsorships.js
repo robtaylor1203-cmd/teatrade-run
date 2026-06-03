@@ -48,31 +48,50 @@ export async function onRequestGet({ env }) {
   let fetchErr  = null;
   let fetchOk   = false;
   let rawSample = null;
+  const attempts = [];
 
   if (!token) {
     fetchErr = "missing_token";
   } else {
-    try {
-      const r = await fetch(
-        `https://www.givewheel.com/api/fundraisings/${fundraisingId}/donations/?limit=500`,
-        {
+    // Try Bearer first (per GiveWheel's docs page), then Token
+    // (django-rest-knox default). Some Django setups return 404
+    // instead of 401 when auth fails, so we treat both as retry.
+    const url = `https://www.givewheel.com/api/fundraisings/${fundraisingId}/donations/`;
+    for (const scheme of ["Bearer", "Token"]) {
+      try {
+        const r = await fetch(url, {
           headers: {
-            "authorization": `Bearer ${token}`,
-            "accept": "application/json",
+            "authorization": `${scheme} ${token}`,
+            "accept":        "application/json",
           },
           cf: { cacheTtl: 0 },
+        });
+        const bodyText = await r.text();
+        attempts.push({
+          scheme,
+          status:  r.status,
+          snippet: bodyText.slice(0, 200),
+        });
+        if (r.ok) {
+          let payload;
+          try { payload = JSON.parse(bodyText); }
+          catch { fetchErr = "gw_bad_json"; break; }
+          donations = normaliseDonations(payload);
+          rawSample = sampleRawDonation(payload);
+          fetchOk = true;
+          fetchErr = null;
+          break;
         }
-      );
-      if (r.ok) {
-        const payload = await r.json();
-        donations = normaliseDonations(payload);
-        rawSample = sampleRawDonation(payload);
-        fetchOk = true;
-      } else {
+        if (r.status !== 401 && r.status !== 403 && r.status !== 404) {
+          fetchErr = `gw_http_${r.status}`;
+          break;
+        }
         fetchErr = `gw_http_${r.status}`;
+      } catch (e) {
+        attempts.push({ scheme, error: String(e && e.message || e) });
+        fetchErr = "gw_fetch_failed";
+        break;
       }
-    } catch (e) {
-      fetchErr = "gw_fetch_failed";
     }
   }
 
@@ -211,6 +230,7 @@ export async function onRequestGet({ env }) {
       general_pending_count: data.general_pending.length,
       orphan_count:          data.orphan_donations.length,
       gw_raw_keys:           rawSample ? Object.keys(rawSample) : null,
+      gw_attempts:           attempts,
     },
   }), {
     headers: {
