@@ -16,16 +16,25 @@
  *      can be manually attributed via /api/admin/assign-pixel.
  *
  * Required env vars (set in Cloudflare Pages):
- *   GIVEWHEEL_API_TOKEN       Knox bearer token for the fundraiser
- *                             owner. Obtain via POST /api/auth/login/.
- *   GIVEWHEEL_FUNDRAISING_ID  Defaults to 16454.
+ *   GIVEWHEEL_USERNAME        Email used to log into GiveWheel.
+ *   GIVEWHEEL_PASSWORD        Password for that account (Secret).
+ *                             The Worker mints + caches its own
+ *                             Knox tokens via /api/auth/login/, so
+ *                             no manual rotation is ever required.
+ *   GIVEWHEEL_FUNDRAISING_ID  Defaults to 16454 (auto-resolved
+ *                             from the summary endpoint anyway).
+ *   GIVEWHEEL_API_TOKEN       Optional override. If set, used as
+ *                             the initial token; auto-refresh
+ *                             still kicks in on expiry.
  */
 
-const PENDING_TTL_MS = 30 * 60 * 1000;
+const PENDING_TTL_MS  = 30 * 60 * 1000;
+const TOKEN_KV_KEY    = "gw_token";
+// Refresh a bit before actual expiry to avoid mid-poll 401s.
+const TOKEN_SKEW_MS   = 5 * 60 * 1000;
 
 export async function onRequestGet({ env }) {
   const fundraisingId = env.GIVEWHEEL_FUNDRAISING_ID || "16454";
-  const token         = env.GIVEWHEEL_API_TOKEN;
 
   const raw = await env.SPONSORSHIPS_KV.get("data");
   let data = raw ? JSON.parse(raw) : freshState();
@@ -108,47 +117,58 @@ export async function onRequestGet({ env }) {
   //     stored in some env vars. We always prefer the id we just
   //     pulled from the public summary endpoint so a misconfigured
   //     env var can't break attribution.
+  //
+  //     Knox tokens expire (default ~10h), so we cache the token in
+  //     KV with its expiry and auto-refresh via Basic-auth login
+  //     whenever it's missing/expired/rejected.
   const apiId = summaryId || fundraisingId;
-  if (token) {
-    const candidates = [
-      `https://www.givewheel.com/api/fundraisings/${apiId}/donations/`,
-      `https://www.givewheel.com/api/fundraisings/${apiId}/donations`,
-    ];
-    outer:
-    for (const donationsUrl of candidates) {
-      for (const scheme of ["Token", "Bearer"]) {
-        try {
-          const r = await fetch(donationsUrl, {
-            headers: {
-              "authorization": `${scheme} ${token}`,
-              "accept":        "application/json",
-              "user-agent":    "teatrade-run-reconciler/1.0",
-            },
-            cf: { cacheTtl: 0 },
-          });
-          const txt = await r.text();
-          attempts.push({
-            what:    "donations",
-            url:     donationsUrl,
-            scheme,
-            status:  r.status,
-            snippet: txt.slice(0, 160),
-          });
-          if (r.ok) {
-            try {
-              const payload = JSON.parse(txt);
-              donations = normaliseDonations(payload);
-              rawSample = sampleRawDonation(payload);
-              donationsOk = true;
-              break outer;
-            } catch { /* not JSON — try next candidate */ }
-          }
-          // 401/403 means auth scheme wrong — try the other scheme.
-          // Any other non-2xx (incl. 404) — move to next path.
-          if (r.status !== 401 && r.status !== 403) break;
-        } catch (e) {
-          attempts.push({ what: "donations", url: donationsUrl, scheme, error: String(e && e.message || e) });
+  let tokenMeta = null;        // { token, expiry, source } for _diag
+  if (env.GIVEWHEEL_USERNAME && env.GIVEWHEEL_PASSWORD || env.GIVEWHEEL_API_TOKEN) {
+    tokenMeta = await getKnoxToken(env, attempts);
+  }
+
+  if (tokenMeta?.token) {
+    const donationsUrl = `https://www.givewheel.com/api/fundraisings/${apiId}/donations/`;
+
+    // First attempt with whatever token we have. If it 401s and we
+    // have credentials, force a refresh and try once more.
+    for (let pass = 0; pass < 2; pass++) {
+      try {
+        const r = await fetch(donationsUrl, {
+          headers: {
+            "authorization": `Token ${tokenMeta.token}`,
+            "accept":        "application/json",
+            "user-agent":    "teatrade-run-reconciler/1.0",
+          },
+          cf: { cacheTtl: 0 },
+        });
+        const txt = await r.text();
+        attempts.push({
+          what:    "donations",
+          url:     donationsUrl,
+          pass,
+          token_source: tokenMeta.source,
+          status:  r.status,
+          snippet: txt.slice(0, 160),
+        });
+        if (r.ok) {
+          try {
+            const payload = JSON.parse(txt);
+            donations = normaliseDonations(payload);
+            rawSample = sampleRawDonation(payload);
+            donationsOk = true;
+          } catch { /* not JSON */ }
+          break;
         }
+        if (r.status === 401 && pass === 0 && env.GIVEWHEEL_USERNAME && env.GIVEWHEEL_PASSWORD) {
+          tokenMeta = await getKnoxToken(env, attempts, { force: true });
+          if (!tokenMeta?.token) break;
+          continue;
+        }
+        break;
+      } catch (e) {
+        attempts.push({ what: "donations", url: donationsUrl, error: String(e && e.message || e) });
+        break;
       }
     }
   }
@@ -294,6 +314,8 @@ export async function onRequestGet({ env }) {
       env_fundraising_id:    fundraisingId,
       donations_ok:          donationsOk,
       donation_count:        donations.length,
+      token_source:          tokenMeta?.source || null,
+      token_expiry:          tokenMeta?.expiry || null,
       fetch_err:             fetchErr,
       pending_count:         data.pending.length,
       general_pending_count: data.general_pending.length,
@@ -347,6 +369,73 @@ function isMatch(pending, donation) {
 }
 
 // -- helpers -----------------------------------------------------
+
+// Resolve a usable Knox token. Caches in KV and refreshes whenever
+// the cached one is missing, near-expiry, or explicitly forced
+// (e.g. after a 401 from the donations endpoint).
+//
+// Priority order:
+//   1. Cached KV token (if not near expiry and force=false)
+//   2. Fresh login via GIVEWHEEL_USERNAME/PASSWORD Basic auth
+//   3. Static GIVEWHEEL_API_TOKEN env var (legacy fallback)
+async function getKnoxToken(env, attempts, { force = false } = {}) {
+  // 1. Cached token.
+  if (!force) {
+    try {
+      const cached = await env.SPONSORSHIPS_KV.get(TOKEN_KV_KEY, { type: "json" });
+      if (cached?.token && cached?.expiry) {
+        const expMs = Date.parse(cached.expiry);
+        if (Number.isFinite(expMs) && expMs - TOKEN_SKEW_MS > Date.now()) {
+          return { token: cached.token, expiry: cached.expiry, source: "kv_cache" };
+        }
+      } else if (cached?.token) {
+        return { token: cached.token, expiry: null, source: "kv_cache_no_expiry" };
+      }
+    } catch (e) {
+      attempts.push({ what: "token_cache_read", error: String(e && e.message || e) });
+    }
+  }
+
+  // 2. Fresh login.
+  if (env.GIVEWHEEL_USERNAME && env.GIVEWHEEL_PASSWORD) {
+    try {
+      const basic = btoa(`${env.GIVEWHEEL_USERNAME}:${env.GIVEWHEEL_PASSWORD}`);
+      const r = await fetch("https://www.givewheel.com/api/auth/login/", {
+        method:  "POST",
+        headers: {
+          "authorization": `Basic ${basic}`,
+          "accept":        "application/json",
+          "user-agent":    "teatrade-run-reconciler/1.0",
+        },
+      });
+      const txt = await r.text();
+      attempts.push({ what: "token_login", status: r.status, snippet: txt.slice(0, 160) });
+      if (r.ok) {
+        const j = JSON.parse(txt);
+        const meta = { token: j.token, expiry: j.expiry || null, source: "fresh_login" };
+        try {
+          // Persist for the next poll. Use the expiry as the KV TTL
+          // so KV cleans up after itself if we ever stop polling.
+          const ttlSec = meta.expiry
+            ? Math.max(60, Math.floor((Date.parse(meta.expiry) - Date.now()) / 1000))
+            : 60 * 60 * 12;
+          await env.SPONSORSHIPS_KV.put(TOKEN_KV_KEY, JSON.stringify(meta), { expirationTtl: ttlSec });
+        } catch (e) {
+          attempts.push({ what: "token_cache_write", error: String(e && e.message || e) });
+        }
+        return meta;
+      }
+    } catch (e) {
+      attempts.push({ what: "token_login", error: String(e && e.message || e) });
+    }
+  }
+
+  // 3. Static env token (legacy).
+  if (env.GIVEWHEEL_API_TOKEN) {
+    return { token: env.GIVEWHEEL_API_TOKEN, expiry: null, source: "env_static" };
+  }
+  return null;
+}
 
 // If a donation carries our M{pixel}-XXXX lock code and the pixel
 // is still free, reconstruct a sponsorship from the donation data.
