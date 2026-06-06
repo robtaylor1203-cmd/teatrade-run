@@ -149,7 +149,7 @@ export async function onRequestGet({ env }) {
           pass,
           token_source: tokenMeta.source,
           status:  r.status,
-          snippet: txt.slice(0, 160),
+          snippet: txt.slice(0, 800),
         });
         if (r.ok) {
           try {
@@ -321,6 +321,7 @@ export async function onRequestGet({ env }) {
       general_pending_count: data.general_pending.length,
       orphan_count:          data.orphan_donations.length,
       gw_raw_keys:           rawSample ? Object.keys(rawSample) : null,
+      gw_raw_sample:         rawSample,
       attempts,
     },
   }), {
@@ -518,7 +519,11 @@ function extractQuestion(d, n) {
     if (d[k] != null && d[k] !== "") return String(d[k]);
   }
   // Some APIs nest answers under `questions` / `responses` / `answers`.
-  const containers = [d.questions, d.responses, d.answers, d.donor_questions, d.custom_questions];
+  // GiveWheel uses `supporter_questions` per the live response.
+  const containers = [
+    d.supporter_questions, d.questions, d.responses, d.answers,
+    d.donor_questions,   d.custom_questions,
+  ];
   for (const c of containers) {
     if (!c) continue;
     if (Array.isArray(c)) {
