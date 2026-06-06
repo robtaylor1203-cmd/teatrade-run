@@ -261,6 +261,18 @@ export async function onRequestGet({ env }) {
         continue;
       }
 
+      // Donation carries a lock code, but the pixel is already held
+      // by a placeholder (manually-attributed) entry. Promote it:
+      // attach the real gw_id so we stop orphaning the donation,
+      // and keep all the manually-set fields (logo, name, message).
+      const upgraded = upgradeManualEntry(d, data, gwId, now);
+      if (upgraded) {
+        orphanIds.delete(gwId);
+        alreadyConfirmed.add(gwId);
+        changed = true;
+        continue;
+      }
+
       // Unmatched — track as an orphan so it shows up in the donor
       // wall and can be manually assigned to a pixel later.
       if (!orphanIds.has(gwId)) {
@@ -281,6 +293,19 @@ export async function onRequestGet({ env }) {
     if (data.orphan_donations.length > 200) {
       data.orphan_donations = data.orphan_donations.slice(-200);
     }
+  }
+
+  // Drop any orphan whose gw_id is now held by a confirmed
+  // sponsorship — happens after a manual entry gets upgraded.
+  {
+    const confirmedIds = new Set(
+      data.sponsorships.map(s => String(s.gw_id || "")).filter(Boolean)
+    );
+    const before = data.orphan_donations.length;
+    data.orphan_donations = data.orphan_donations.filter(
+      o => !confirmedIds.has(String(o.gw_id))
+    );
+    if (data.orphan_donations.length !== before) changed = true;
   }
 
   if (changed) {
@@ -436,6 +461,27 @@ async function getKnoxToken(env, attempts, { force = false } = {}) {
     return { token: env.GIVEWHEEL_API_TOKEN, expiry: null, source: "env_static" };
   }
   return null;
+}
+
+// If a donation carries our M{pixel}-XXXX lock code but the pixel
+// is already taken by a placeholder (manually-attributed) entry,
+// upgrade that entry: swap the synthetic `manual-*` gw_id for the
+// real one. Keeps all manually-set fields intact (logo, name,
+// tier, message), so the admin's edits aren't lost.
+function upgradeManualEntry(d, data, realGwId, nowMs) {
+  const code = (d.code || "").trim();
+  if (!code) return false;
+  const m = /^M(\d{1,3})-/i.exec(code);
+  if (!m) return false;
+  const pixel = parseInt(m[1], 10);
+  if (!pixel) return false;
+  const idx = data.sponsorships.findIndex(s =>
+    s.pixel === pixel && /^manual-/i.test(String(s.gw_id || ""))
+  );
+  if (idx < 0) return false;
+  data.sponsorships[idx].gw_id        = realGwId;
+  data.sponsorships[idx].upgraded_ms  = nowMs;
+  return true;
 }
 
 // If a donation carries our M{pixel}-XXXX lock code and the pixel
