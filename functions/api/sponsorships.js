@@ -59,6 +59,7 @@ export async function onRequestGet({ env }) {
   let donationsOk  = false;
   let summaryTotal = null;
   let summarySupporters = null;
+  let summaryId    = null;    // numeric id returned by GW
   let rawSample    = null;
   const attempts   = [];
 
@@ -89,6 +90,7 @@ export async function onRequestGet({ env }) {
         const j = JSON.parse(txt);
         summaryTotal      = Number(j.amount_raised) || Number(j.total_raised) || 0;
         summarySupporters = Number(j.supporters) || 0;
+        summaryId         = j.id ?? null;
         fetchErr = null;
         break;
       }
@@ -99,22 +101,18 @@ export async function onRequestGet({ env }) {
     }
   }
 
-  // (b) Per-donation list — needs a Knox token. The OpenAPI schema
-  //     documents /api/fundraisings/{id}/donations/ but that path
-  //     currently 404s. Try a handful of plausible variants so that
-  //     if GiveWheel exposes the data under any of them we'll pick
-  //     it up automatically. Each attempt is logged in _diag for
-  //     post-mortem inspection.
+  // (b) Per-donation list — needs a Knox token. Path per GiveWheel's
+  //     technical co-founder Ollie:
+  //       GET /api/fundraisings/{numeric_id}/donations/   (Token auth)
+  //     The `{id}` here is the integer pk (e.g. 16454), NOT the UUID
+  //     stored in some env vars. We always prefer the id we just
+  //     pulled from the public summary endpoint so a misconfigured
+  //     env var can't break attribution.
+  const apiId = summaryId || fundraisingId;
   if (token) {
     const candidates = [
-      `https://www.givewheel.com/api/fundraisings/${fundraisingId}/donations/`,
-      `https://www.givewheel.com/api/fundraisings/${fundraisingId}/donations`,
-      `https://www.givewheel.com/api/donations/?fundraising=${fundraisingId}`,
-      `https://www.givewheel.com/api/donations/?fundraising_id=${fundraisingId}`,
-      `https://www.givewheel.com/api/donations/?fundraisings=${fundraisingId}`,
-      `https://www.givewheel.com/api/fundraisings/${fundraisingId}/donations/list/`,
-      `https://www.givewheel.com/api/fundraisings/${fundraisingId}/donation_list/`,
-      `https://www.givewheel.com/api/fundraisings/${fundraisingId}/supporters/`,
+      `https://www.givewheel.com/api/fundraisings/${apiId}/donations/`,
+      `https://www.givewheel.com/api/fundraisings/${apiId}/donations`,
     ];
     outer:
     for (const donationsUrl of candidates) {
@@ -139,18 +137,15 @@ export async function onRequestGet({ env }) {
           if (r.ok) {
             try {
               const payload = JSON.parse(txt);
-              const list = listFromPayload(payload);
-              if (list.length || Array.isArray(payload)) {
-                donations = normaliseDonations(payload);
-                rawSample = sampleRawDonation(payload);
-                donationsOk = true;
-                break outer;
-              }
-            } catch { /* not JSON — keep trying other candidates */ }
+              donations = normaliseDonations(payload);
+              rawSample = sampleRawDonation(payload);
+              donationsOk = true;
+              break outer;
+            } catch { /* not JSON — try next candidate */ }
           }
-          // 401/403 means auth scheme wrong on this path — try other scheme.
-          // 404 means path wrong — break inner, move to next path.
-          if (r.status === 404) break;
+          // 401/403 means auth scheme wrong — try the other scheme.
+          // Any other non-2xx (incl. 404) — move to next path.
+          if (r.status !== 401 && r.status !== 403) break;
         } catch (e) {
           attempts.push({ what: "donations", url: donationsUrl, scheme, error: String(e && e.message || e) });
         }
@@ -294,6 +289,9 @@ export async function onRequestGet({ env }) {
     _diag: {
       summary_total:         summaryTotal,
       summary_supporters:    summarySupporters,
+      summary_id:            summaryId,
+      api_id_used:           apiId,
+      env_fundraising_id:    fundraisingId,
       donations_ok:          donationsOk,
       donation_count:        donations.length,
       fetch_err:             fetchErr,

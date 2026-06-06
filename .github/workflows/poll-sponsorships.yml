@@ -19,8 +19,32 @@ jobs:
     steps:
       - name: Hit /api/sponsorships
         run: |
-          curl -fsS -o /tmp/resp.json -w 'HTTP %{http_code} in %{time_total}s\n' \
-            https://run.teatrade.co.uk/api/sponsorships
-          # Print just the diagnostic block so the run log is useful
-          # if reconciliation starts failing silently.
-          python3 -c "import json,sys; d=json.load(open('/tmp/resp.json')); print(json.dumps({'raised_total': d.get('raised_total'), 'pending': d.get('pending_pixels'), 'orphans': len(d.get('orphan_donations',[])), '_diag': d.get('_diag')}, indent=2))"
+          set -u
+          # -s silent, -S still show errors, NOT -f so we don't exit
+          # 22 on a transient 5xx — we want to log it and move on.
+          HTTP=$(curl -sS -o /tmp/resp.json -w '%{http_code}' --max-time 30 \
+            https://run.teatrade.co.uk/api/sponsorships || echo "000")
+          echo "HTTP $HTTP"
+          echo "---- response (truncated) ----"
+          head -c 4000 /tmp/resp.json || true
+          echo
+          echo "---- diag ----"
+          python3 -c "
+          import json, sys
+          try:
+            d = json.load(open('/tmp/resp.json'))
+          except Exception as e:
+            print('non-json response:', e)
+            sys.exit(0)
+          print(json.dumps({
+            'raised_total': d.get('raised_total'),
+            'pending':      d.get('pending_pixels'),
+            'orphans':      len(d.get('orphan_donations', [])),
+            '_diag':        d.get('_diag'),
+          }, indent=2))
+          " || true
+          # Only fail the job on a 5xx (real outage). 4xx is logged
+          # so we can act, but doesn't cause noisy red runs.
+          case "$HTTP" in
+            5*|000) exit 1 ;;
+          esac
