@@ -214,7 +214,8 @@ function upgradeManualEntry(data, pixel, gwId, now) {
 }
 
 // Attribute GiveWheel donations to miles. Mutates `data`; returns whether
-// anything changed plus the outcome per newly seen donation.
+// anything changed, the outcome per newly seen donation, and the donor emails
+// to send. Emails are returned separately so they can't leak into responses.
 export function reconcileAll(data, donations, now) {
   const handled = new Set([
     ...data.sponsorships.map(s => String(s.gw_id || "")),
@@ -224,13 +225,15 @@ export function reconcileAll(data, donations, now) {
 
   let changed = false;
   const outcomes = [];
+  const notifications = [];
 
   for (const d of donations) {
     const gwId = String(d.id);
     if (handled.has(gwId)) continue;
 
-    const result = attribute(data, d, gwId, now);
+    const { notify, ...result } = attribute(data, d, gwId, now);
     outcomes.push({ gw_id: gwId, ...result });
+    if (notify) notifications.push(notify);
 
     if (result.kind === "orphan") {
       if (!orphanIds.has(gwId)) {
@@ -259,7 +262,21 @@ export function reconcileAll(data, donations, now) {
   if (data.orphan_donations.length !== before) changed = true;
   if (data.orphan_donations.length > 200) data.orphan_donations = data.orphan_donations.slice(-200);
 
-  return { changed, outcomes };
+  return { changed, outcomes, notifications };
+}
+
+// What the confirmation email needs. Only claims that captured an email.
+function notifyFor(p, d, gwId) {
+  if (!p.contact_email) return undefined;
+  return {
+    email:   p.contact_email,
+    opt_in:  p.updates_opt_in === true,
+    name:    p.sponsor_name,
+    message: p.message || "",
+    amount:  d.amount,
+    pixel:   p.pixel || null,
+    gw_id:   gwId,
+  };
 }
 
 function attribute(data, d, gwId, now) {
@@ -271,13 +288,13 @@ function attribute(data, d, gwId, now) {
     if (!holder) {
       data.sponsorships.push(sponsorshipFromPending(p, d, gwId, now));
       data.pending.splice(pIdx, 1);
-      return { kind: "pending_match", pixel: p.pixel };
+      return { kind: "pending_match", pixel: p.pixel, notify: notifyFor(p, d, gwId) };
     }
     if (/^manual-/i.test(String(holder.gw_id || ""))) {
       holder.gw_id = gwId;
       holder.upgraded_ms = now;
       data.pending.splice(pIdx, 1);
-      return { kind: "manual_upgrade", pixel: p.pixel };
+      return { kind: "manual_upgrade", pixel: p.pixel, notify: notifyFor(p, d, gwId) };
     }
     // Someone else already holds this mile (e.g. a lock expired and a second
     // donor paid first). Keep the money, flag for the admin to sort out.
@@ -297,7 +314,7 @@ function attribute(data, d, gwId, now) {
       confirmed_ms: now,
     });
     data.general_pending.splice(gIdx, 1);
-    return { kind: "general_match" };
+    return { kind: "general_match", notify: notifyFor(p, d, gwId) };
   }
 
   // 3. Claim forgotten but the lock code survived on the donation.

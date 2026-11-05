@@ -25,6 +25,7 @@ import {
   ensureShape, isActive, reconcileAll, persistLogo, cleanLogo, safeEqual,
   PENDING_KEEP_MS,
 } from "../_lib/sponsor.js";
+import { notifyAll } from "../_lib/email.js";
 
 const TOKEN_KV_KEY  = "gw_token";
 const TOKEN_SKEW_MS = 5 * 60 * 1000;   // refresh a bit before real expiry
@@ -143,6 +144,7 @@ export async function onRequestGet(context) {
   const now  = Date.now();
   let changed = false;
   let outcomes = [];
+  let notifications = [];
 
   // Forget claims we've held long enough (expired claims are kept for a while
   // so a late payment still gets its logo and message).
@@ -166,6 +168,7 @@ export async function onRequestGet(context) {
   if (donationsOk && donations.length) {
     const rec = reconcileAll(data, donations, now);
     outcomes = rec.outcomes;
+    notifications = rec.notifications;
     if (rec.changed) changed = true;
 
     // Paid mile claims: make their uploaded logo permanent.
@@ -183,6 +186,10 @@ export async function onRequestGet(context) {
     try { await env.SPONSORSHIPS_KV.put("data", JSON.stringify(data)); }
     catch (e) { writeError = String(e && e.message || e); }
   }
+
+  // Only email once the confirmation is saved; Resend de-duplicates on the
+  // donation id if two overlapping polls both get this far.
+  if (!writeError && notifications.length) context.waitUntil(notifyAll(env, notifications));
 
   // -- 3. Respond ---------------------------------------------------------
   const body = {

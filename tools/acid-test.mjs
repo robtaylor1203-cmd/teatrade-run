@@ -52,8 +52,9 @@ function gwPay({ amount, code, name = "Donor", message = "" }) {
   return gwId;
 }
 globalThis.fetch = async (url, init = {}) => {
-  gwCalls++;
   const u = String(url);
+  if (u.startsWith("https://api.resend.com")) return resendMock(u, init);
+  gwCalls++;
   const res = (status, body) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
   if (u.includes("/api/fundraisings/url/")) {
     return res(200, { id: 16454, amount_raised: gwDonations.reduce((a, d) => a + parseFloat(d.donationamount), 0), supporters: gwDonations.length });
@@ -68,13 +69,43 @@ globalThis.fetch = async (url, init = {}) => {
   return res(404, {});
 };
 
+// ---- mock Resend ----------------------------------------------------
+const resendCalls = [];
+const sentKeys = new Set();
+const existingContacts = new Set();
+let resendMode = "ok";   // "ok" | "down"
+function resendMock(u, init) {
+  const path = u.replace("https://api.resend.com", "");
+  const body = init.body ? JSON.parse(init.body) : null;
+  const call = { path, method: init.method || "GET", headers: init.headers, body };
+  resendCalls.push(call);
+  const res = (status, b) => new Response(JSON.stringify(b), { status });
+  if (init.headers?.authorization !== "Bearer re_test") return res(401, { message: "bad key" });
+  if (resendMode === "down") return res(500, { message: "down" });
+  if (path === "/emails") {
+    const k = init.headers["idempotency-key"];
+    if (k) sentKeys.add(k);
+    return res(200, { id: "em_" + resendCalls.length });
+  }
+  if (path === "/contacts") {
+    if (existingContacts.has(body.email)) return res(409, { message: "exists" });
+    existingContacts.add(body.email);
+    return res(200, { id: "ct_1" });
+  }
+  if (/^\/contacts\/.+\/topics$/.test(path)) return res(200, { object: "contact_topics" });
+  return res(404, {});
+}
+
 // ---- helpers --------------------------------------------------------
 const kv = new KV();
 const env = {
   SPONSORSHIPS_KV: kv, GIVEWHEEL_USERNAME: "u@x", GIVEWHEEL_PASSWORD: "pw",
   ADMIN_SECRET: "adm", GIVEWHEEL_WEBHOOK_SECRET: "whsec",
+  RESEND_API_KEY: "re_test", RESEND_TOPIC_ID: "topic_run",
 };
-const makeCtx = (request) => ({ request, env, waitUntil() {} });
+const bg = [];
+const makeCtx = (request) => ({ request, env, waitUntil: p => bg.push(p) });
+const flush = async () => { await Promise.allSettled(bg.splice(0)); };
 const post = (path, body, headers = {}) => new Request("https://run.teatrade.co.uk" + path,
   { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
 const doClaim = async (body, ip = "1.1.1.1") => {
@@ -251,6 +282,91 @@ const firstCalls = gwCalls;
 for (let i = 0; i < 50; i++) await poll(cctx());
 ok(firstCalls > 0 && gwCalls === firstCalls, `50 further visitor polls made 0 extra GiveWheel calls (first poll: ${firstCalls})`, gwCalls);
 delete globalThis.caches;
+
+console.log("\n15. Donor emails (confirmation + opt-in updates)");
+const emails  = () => resendCalls.filter(c => c.path === "/emails");
+const subs    = () => resendCalls.filter(c => c.path === "/contacts" || /\/topics$/.test(c.path));
+const reset   = () => { resendCalls.length = 0; };
+const payFor  = async (claimRes, amount, name) => { gwPay({ amount, code: claimRes.body.code, name }); await doPoll(); await flush(); };
+
+r = await doClaim({ pixel: 41, amount: 50, sponsor_name: "Bad", contact_email: "not-an-email" }, "10.0.0.1");
+ok(r.status === 400 && r.body.error === "bad_email", "invalid email rejected on claim", r);
+dr = await donate(makeCtx(post("/api/donate", { amount: 5, donor_type: "individual", sponsor_name: "x", contact_email: "a@b" })));
+ok(dr.status === 400, "invalid email rejected on donate");
+
+reset();
+r = await doClaim({ pixel: 41, amount: 50, sponsor_name: "<b>Anna</b>", message: "Run <i>fast</i>", contact_email: "Anna@Example.com ", updates_opt_in: true }, "10.0.0.2");
+ok(r.status === 200, "claim with email + opt-in accepted", r);
+await flush();
+ok(emails().length === 0, "no email before payment");
+pub = await doPoll(true);
+ok(!JSON.stringify(pub).includes("example.com"), "email absent from public AND admin API output");
+const dd2 = await kv.get("data");
+ok(dd2.includes("anna@example.com"), "email held privately on the unpaid claim (normalised)");
+
+await payFor(r, 50, "Anna GW");
+ok(emails().length === 1, "exactly one confirmation email after payment", emails().length);
+let em = emails()[0];
+ok(em && em.body.to[0] === "anna@example.com", "sent to the donor");
+ok(em && em.body.from === "Run TeaTrade <run@teatrade.co.uk>", "sent from Run TeaTrade <run@teatrade.co.uk>", em && em.body.from);
+ok(em && /Mile 41/.test(em.body.subject), "subject names the mile", em && em.body.subject);
+ok(em && /^confirm-\d+$/.test(em.headers["idempotency-key"]), "idempotency key tied to the donation id", em && em.headers["idempotency-key"]);
+ok(em && !em.body.html.includes("<b>Anna") && em.body.html.includes("&lt;b&gt;Anna&lt;/b&gt;") && !em.body.html.includes("<i>fast"), "user text is HTML-escaped in the email");
+ok(em && em.body.html.includes("https://run.teatrade.co.uk/#map-section") && em.body.text.includes("Mile 41"), "has map link and plain-text part");
+const sub = subs();
+ok(sub.length === 1 && sub[0].path === "/contacts" && sub[0].body.topics[0].id === "topic_run" && sub[0].body.topics[0].subscription === "opt_in", "opted-in donor subscribed to the run-updates topic only", sub);
+ok(!(await kv.get("data")).includes("anna@example.com"), "email no longer stored once confirmation is sent");
+pub = await doPoll(true);
+ok(!JSON.stringify(pub).includes("example.com"), "email still absent from API output after confirmation");
+await doPoll(); await doPoll(); await flush();
+ok(emails().length === 1, "re-polling never re-sends");
+
+reset();
+r = await doClaim({ pixel: 42, amount: 50, sponsor_name: "Ben", contact_email: "ben@example.com" }, "10.0.0.3");
+await payFor(r, 50, "Ben");
+ok(emails().length === 1 && subs().length === 0, "no opt-in tick => confirmation only, NOT added to any list", { e: emails().length, s: subs().length });
+
+reset();
+r = await doClaim({ pixel: 43, amount: 50, sponsor_name: "Cara" }, "10.0.0.4");
+await payFor(r, 50, "Cara");
+ok(emails().length === 0 && subs().length === 0, "no email given => nothing sent");
+ok(!!(await doPoll()).sponsorships.find(x => x.pixel === 43), "…and the mile still confirms");
+
+reset(); resendMode = "down";
+r = await doClaim({ pixel: 44, amount: 50, sponsor_name: "Dan", contact_email: "dan@example.com", updates_opt_in: true }, "10.0.0.5");
+await payFor(r, 50, "Dan");
+ok(!!(await doPoll()).sponsorships.find(x => x.pixel === 44), "Resend outage does not block the mile confirming");
+resendMode = "ok";
+
+reset(); existingContacts.add("eve@example.com");
+r = await doClaim({ pixel: 45, amount: 50, sponsor_name: "Eve", contact_email: "eve@example.com", updates_opt_in: true }, "10.0.0.6");
+await payFor(r, 50, "Eve");
+ok(subs().some(c => /\/contacts\/eve%40example\.com\/topics$/.test(c.path) && c.method === "PATCH"), "existing contact (e.g. on main list) gets topic opt-in via PATCH, not a new global subscription", subs().map(c => c.method + " " + c.path));
+
+reset(); const savedKey = env.RESEND_API_KEY; delete env.RESEND_API_KEY;
+r = await doClaim({ pixel: 46, amount: 50, sponsor_name: "Finn", contact_email: "finn@example.com", updates_opt_in: true }, "10.0.0.7");
+await payFor(r, 50, "Finn");
+ok(resendCalls.length === 0 && !!(await doPoll()).sponsorships.find(x => x.pixel === 46), "no RESEND_API_KEY => feature off, flow unaffected");
+env.RESEND_API_KEY = savedKey;
+
+reset();
+dr = await donate(makeCtx(post("/api/donate", { amount: 15, donor_type: "individual", sponsor_name: "Gina", message: "hi", contact_email: "gina@example.com" })));
+const gj = await dr.json();
+gwPay({ amount: 15, code: new URL(gj.GiveWheel_url).searchParams.get("d_question_1"), name: "Gina" });
+await doPoll(); await flush();
+ok(emails().length === 1 && /Thank you/.test(emails()[0].body.subject) && !/Mile/.test(emails()[0].body.subject), "general donation gets a thank-you (no mile wording)", emails().map(e => e.body.subject));
+
+reset();
+r = await doClaim({ pixel: 47, amount: 50, sponsor_name: "Hal", contact_email: "hal@example.com" }, "10.0.0.8");
+const hid = gwPay({ amount: 50, code: r.body.code, name: "Hal" });
+const whB = JSON.stringify({ donation: { id: hid, amount: 50, name: "Hal", supporter_questions: [{ response: r.body.code }] } });
+const key2 = await crypto.subtle.importKey("raw", new TextEncoder().encode("whsec"), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+const sig2 = Buffer.from(await crypto.subtle.sign("HMAC", key2, new TextEncoder().encode(whB))).toString("hex");
+wr = await webhook(makeCtx(new Request("https://x/w", { method: "POST", body: whB, headers: { "x-givewheel-signature": sig2 } })));
+await flush();
+const whj = await wr.json();
+ok(wr.status === 200 && whj.kind === "pending_match" && !JSON.stringify(whj).includes("example.com"), "webhook path confirms and its response carries no email", whj);
+ok(emails().length === 1, "webhook path sends the confirmation too");
 
 console.log(`\n==== ${pass} passed, ${fail} failed ====`);
 process.exit(fail ? 1 : 0);

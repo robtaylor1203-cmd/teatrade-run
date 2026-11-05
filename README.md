@@ -38,6 +38,11 @@ map + grid update within ~45s: orange individual, black business, gold premium
   Unpaid claims' logos expire after 3 days.
 - `/api/givewheel-webhook` is optional and disabled unless `GIVEWHEEL_WEBHOOK_SECRET`
   is set. `/api/enthuse-webhook` is a leftover from an earlier design and unused.
+- **Donor emails** ([`functions/_lib/email.js`](functions/_lib/email.js)): once a payment is
+  confirmed, the donor gets a confirmation from `Run TeaTrade <run@teatrade.co.uk>` via Resend.
+  An unticked "send me updates" box subscribes them to a dedicated Resend Topic. The email is
+  held privately on the unpaid claim only and removed once the confirmation is sent. Email is
+  best-effort: with no `RESEND_API_KEY`, or if Resend is down, donations still confirm.
 
 ### Cloudflare Pages settings
 
@@ -48,6 +53,15 @@ KV binding: `SPONSORSHIPS_KV`.
 | `GIVEWHEEL_USERNAME` / `GIVEWHEEL_PASSWORD` | GiveWheel login used to mint and auto-refresh API tokens (password as Secret). **Required** for mile confirmation. |
 | `ADMIN_SECRET` | Unlocks `/admin/` and the admin-only fields of `/api/sponsorships`. |
 | `GIVEWHEEL_WEBHOOK_SECRET` | Optional. Enables the signed webhook for instant attribution. |
+| `RESEND_API_KEY` | Optional (Secret). Enables donor emails. |
+| `RESEND_TOPIC_ID` | Resend Topic for run updates. Create it with default subscription **Opt-out** so only people who tick the box ever receive run updates (an Opt-in topic would reach your whole contact list). |
+| `RESEND_FROM`, `RESEND_REPLY_TO` | Optional. Default sender is `Run TeaTrade <run@teatrade.co.uk>`. |
+
+**Setting secrets from a file instead of the dashboard.** Pages can't read an env file at
+runtime, and this repo is public, so values must never be committed. Instead, fill in the
+gitignored `.dev.vars`, run `npx wrangler login` once, then `.\tools\push-secrets.ps1`. It
+uploads each filled-in value to Cloudflare as an encrypted secret (anything left as
+`PASTE_HERE` is skipped). Secrets apply from the next deployment.
 | `GIVEWHEEL_FUNDRAISING_ID`, `GIVEWHEEL_SHORTLINK`, `GIVEWHEEL_SLUG`, `GIVEWHEEL_API_TOKEN` | Optional overrides. |
 
 Bootstrap an empty store (only needed for a brand-new KV namespace):

@@ -14,8 +14,10 @@
  * Attribution uses the same rules as the poll (see _lib/sponsor.js).
  */
 import { ensureShape, reconcileAll, persistLogo } from "../_lib/sponsor.js";
+import { notifyAll } from "../_lib/email.js";
 
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost(context) {
+  const { request, env } = context;
   if (!env.GIVEWHEEL_WEBHOOK_SECRET) return j({ error: "webhook_disabled" }, 503);
 
   const rawBody = await request.text();
@@ -38,7 +40,7 @@ export async function onRequestPost({ request, env }) {
   const data = ensureShape(raw ? JSON.parse(raw) : {});
   const now  = Date.now();
 
-  const { changed, outcomes } = reconcileAll(data, [donation], now);
+  const { changed, outcomes, notifications } = reconcileAll(data, [donation], now);
   const outcome = outcomes[0] || { kind: "already_attributed" };
 
   if (changed) {
@@ -48,6 +50,7 @@ export async function onRequestPost({ request, env }) {
     }
     data.updated = new Date().toISOString();
     await env.SPONSORSHIPS_KV.put("data", JSON.stringify(data));
+    if (notifications.length) context.waitUntil(notifyAll(env, notifications));
   }
   return j({ ok: true, gw_id: String(donation.id), ...outcome }, 200);
 }

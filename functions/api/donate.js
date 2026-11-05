@@ -9,6 +9,7 @@
 import {
   PENDING_TTL_MS, PENDING_KEEP_MS, cleanText, checkoutUrl, ensureShape,
 } from "../_lib/sponsor.js";
+import { cleanEmail } from "../_lib/email.js";
 
 const MAX_GENERAL_PENDING = 500;
 
@@ -29,6 +30,8 @@ export async function onRequestPost({ request, env }) {
   }
 
   const message = cleanText(body.message, 200);
+  const email   = cleanEmail(body.contact_email);
+  if (body.contact_email && !email) return json({ error: "bad_email" }, 400);
   const amount  = Math.round(amt);
   const now     = Date.now();
 
@@ -46,6 +49,8 @@ export async function onRequestPost({ request, env }) {
     donor_type:   donorType,
     sponsor_name: name,
     message,
+    contact_email:  email || null,
+    updates_opt_in: !!email && body.updates_opt_in === true,
     created_ms:   now,
     expiresAt:    now + PENDING_TTL_MS,
   });

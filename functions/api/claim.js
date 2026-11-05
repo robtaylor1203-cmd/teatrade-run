@@ -10,6 +10,7 @@ import {
   mileTier, milePrice, cleanText, cleanLogo, randomId, checkoutUrl,
   ensureShape, isActive, LOGO_TTL_SEC,
 } from "../_lib/sponsor.js";
+import { cleanEmail } from "../_lib/email.js";
 
 // Active (unpaid) claims one network address may hold at once.
 const MAX_ACTIVE_PER_CLIENT = 5;
@@ -33,6 +34,11 @@ export async function onRequestPost({ request, env }) {
   const name      = cleanText(body.sponsor_name, 80);
   const message   = cleanText(body.message, 200);
   if (!name) return json({ error: "bad_name" }, 400);
+
+  // Optional, but if given it must be a real address. Held privately on the
+  // claim until the confirmation email is sent, then dropped with the claim.
+  const email = cleanEmail(body.contact_email);
+  if (body.contact_email && !email) return json({ error: "bad_email" }, 400);
 
   let logoDataUrl = "";
   if (donorType === "corporate" && body.logo_url) {
@@ -89,6 +95,8 @@ export async function onRequestPost({ request, env }) {
     tier:         mileTier(pixel),
     amount:       price,
     logo_url:     logoPath,
+    contact_email:   email || null,
+    updates_opt_in:  !!email && body.updates_opt_in === true,
     client_token: clientToken,
     ip_hash:      ipHash,
   });

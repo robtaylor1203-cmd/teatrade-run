@@ -1,11 +1,13 @@
 name: Poll sponsorships
 
-# Pings /api/sponsorships on a schedule so reconciliation runs
-# even when nobody is viewing the page. GiveWheel donations get
-# matched to pending pixels (or recorded as orphans) within a few
-# minutes of being made, instead of waiting for the next visitor.
+# Pings /api/sponsorships on a schedule so reconciliation (and the donor
+# confirmation emails) run even when nobody is viewing the page. GiveWheel
+# donations get matched to pending pixels, or recorded as orphans, within a
+# few minutes instead of waiting for the next visitor.
 #
 # GitHub Actions minimum cron interval is 5 minutes.
+# This repo is public, so the log shows public fields only. Orphans and
+# diagnostics need the admin secret and are viewed on /admin/ instead.
 
 on:
   schedule:
@@ -25,10 +27,6 @@ jobs:
           HTTP=$(curl -sS -o /tmp/resp.json -w '%{http_code}' --max-time 30 \
             https://run.teatrade.co.uk/api/sponsorships || echo "000")
           echo "HTTP $HTTP"
-          echo "---- response (truncated) ----"
-          head -c 4000 /tmp/resp.json || true
-          echo
-          echo "---- diag ----"
           python3 -c "
           import json, sys
           try:
@@ -38,9 +36,8 @@ jobs:
             sys.exit(0)
           print(json.dumps({
             'raised_total': d.get('raised_total'),
-            'pending':      d.get('pending_pixels'),
-            'orphans':      len(d.get('orphan_donations', [])),
-            '_diag':        d.get('_diag'),
+            'sponsored_miles': len(d.get('sponsorships', [])),
+            'reserved_miles': d.get('pending_pixels'),
           }, indent=2))
           " || true
           # Only fail the job on a 5xx (real outage). 4xx is logged

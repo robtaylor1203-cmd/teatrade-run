@@ -1983,6 +1983,22 @@ html {
   letter-spacing: 0.08em;
 }
 .sponsor-form__hint { text-transform: none; letter-spacing: 0; opacity: 0.85; }
+.sponsor-form__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--text);
+  cursor: pointer;
+}
+.sponsor-form__check input {
+  flex-shrink: 0;
+  width: 16px; height: 16px;
+  margin-top: 2px;
+  accent-color: var(--accent-orange);
+}
+.sponsor-form__check .sponsor-form__hint { color: var(--muted); }
 .sponsor-form input[type="text"],
 .sponsor-form input[type="email"],
 .sponsor-form input[type="number"],
@@ -3644,9 +3660,14 @@ html {
       </div>
 
       <label class="sponsor-form__field">
-        <span class="sponsor-form__label">Email <span class="sponsor-form__hint">(so we can keep you posted on progress)</span></span>
+        <span class="sponsor-form__label">Email <span class="sponsor-form__hint">(for your confirmation — never shared)</span></span>
         <input type="email" name="contact_email" id="sponsorEmailInput" required
                placeholder="you@example.com">
+      </label>
+
+      <label class="sponsor-form__check">
+        <input type="checkbox" name="updates_opt_in" value="yes">
+        <span>Send me occasional updates on the run. <span class="sponsor-form__hint">Unsubscribe any time.</span></span>
       </label>
 
       <div class="sponsor-form__error" id="sponsorFormError" role="alert" hidden></div>
@@ -3719,9 +3740,14 @@ html {
       </label>
 
       <label class="sponsor-form__field">
-        <span class="sponsor-form__label">Email <span class="sponsor-form__hint">(so we can keep you posted on progress)</span></span>
+        <span class="sponsor-form__label">Email <span class="sponsor-form__hint">(for your confirmation — never shared)</span></span>
         <input type="email" name="contact_email" id="donateAnyEmail" required
                placeholder="you@example.com">
+      </label>
+
+      <label class="sponsor-form__check">
+        <input type="checkbox" name="updates_opt_in" value="yes">
+        <span>Send me occasional updates on the run. <span class="sponsor-form__hint">Unsubscribe any time.</span></span>
       </label>
 
       <div class="sponsor-form__error" id="donateAnyError" role="alert" hidden></div>
@@ -3885,7 +3911,7 @@ html {
       Alzheimer's Research UK is a registered charity (1077089 & SC042474).<br>
       UK Tea Trade Benevolent Society is a registered charity (275069).</p>
       <p><strong>Privacy & Data:</strong><br>
-      We do not store or see your payment details; all transactions are securely processed by GiveWheel. Your email is only used for updates regarding this run.</p>
+      We do not store or see your payment details; all transactions are securely processed by GiveWheel. We use your email to send your donation confirmation from run@teatrade.co.uk and, only if you tick the box, occasional updates about this run. We never share it or add you to other TeaTrade mailing lists. Unpaid reservations are cleared after 48 hours, and you can unsubscribe from updates at any time using the link in any update.</p>
     </div>
   </div>
 </div>
@@ -4892,6 +4918,7 @@ function setupSponsorForm() {
       message:       (fd.get('message') || '').toString().trim(),
       logo_url:      (fd.get('logo_url') || '').toString() || null,
       contact_email: (fd.get('contact_email') || '').toString().trim(),
+      updates_opt_in: fd.get('updates_opt_in') === 'yes',
     };
     if (!payload.sponsor_name) return showError('Please enter a name.');
     if (!payload.contact_email || !/^\S+@\S+\.\S+$/.test(payload.contact_email)) {
@@ -4916,6 +4943,7 @@ function setupSponsorForm() {
           bad_name:        'Please enter a name.',
           bad_logo:        'That logo could not be used — please try a smaller PNG, JPG or SVG.',
           too_many:        'You have several miles reserved already — please complete those first.',
+          bad_email:       'Please enter a valid email address.',
         })[data.error] || 'Something went wrong reserving your mile. Please try again.';
         submitBtn.disabled = false;
         submitBtn.innerHTML = `Continue to GiveWheel · <span>£${ctx.amount}</span>`;
@@ -5019,6 +5047,7 @@ function setupDonateAnyModal() {
       sponsor_name:  (fd.get('sponsor_name') || '').toString().trim(),
       message:       (fd.get('message') || '').toString().trim(),
       contact_email: (fd.get('contact_email') || '').toString().trim(),
+      updates_opt_in: fd.get('updates_opt_in') === 'yes',
     };
     if (!payload.amount || payload.amount < 1) return showError('Please enter a donation amount of at least £1.');
     if (payload.amount > 100000) return showError('For donations over £100,000 please get in touch directly.');
@@ -5040,7 +5069,9 @@ function setupDonateAnyModal() {
       if (!r.ok || !data.GiveWheel_url) {
         submitBtn.disabled = false;
         submitBtn.innerHTML = `Continue to GiveWheel · <span id="donateAnyDisplay">£${payload.amount}</span>`;
-        return showError('Something went wrong starting your donation. Please try again.');
+        return showError(data.error === 'bad_email'
+          ? 'Please enter a valid email address.'
+          : 'Something went wrong starting your donation. Please try again.');
       }
       window.location.href = data.GiveWheel_url;
     } catch (_) {
