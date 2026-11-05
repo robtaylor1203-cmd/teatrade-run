@@ -72,19 +72,23 @@ globalThis.fetch = async (url, init = {}) => {
 // ---- mock Resend ----------------------------------------------------
 const resendCalls = [];
 const sentKeys = new Set();
+const allEmails = [];   // every email body ever sent, for house-rule checks
 const existingContacts = new Set();
-let resendMode = "ok";   // "ok" | "down"
+let resendMode = "ok";   // "ok" | "down" | "ratelimit_once"
+let rateLimited = false;
 function resendMock(u, init) {
   const path = u.replace("https://api.resend.com", "");
   const body = init.body ? JSON.parse(init.body) : null;
   const call = { path, method: init.method || "GET", headers: init.headers, body };
   resendCalls.push(call);
-  const res = (status, b) => new Response(JSON.stringify(b), { status });
+  const res = (status, b, h = {}) => new Response(JSON.stringify(b), { status, headers: h });
   if (init.headers?.authorization !== "Bearer re_test") return res(401, { message: "bad key" });
   if (resendMode === "down") return res(500, { message: "down" });
+  if (resendMode === "ratelimit_once" && !rateLimited) { rateLimited = true; return res(429, { message: "slow down" }, { "retry-after": "0" }); }
   if (path === "/emails") {
     const k = init.headers["idempotency-key"];
     if (k) sentKeys.add(k);
+    allEmails.push(body);
     return res(200, { id: "em_" + resendCalls.length });
   }
   if (path === "/contacts") {
@@ -92,7 +96,13 @@ function resendMock(u, init) {
     existingContacts.add(body.email);
     return res(200, { id: "ct_1" });
   }
-  if (/^\/contacts\/.+\/topics$/.test(path)) return res(200, { object: "contact_topics" });
+  const one = /^\/contacts\/([^/]+)$/.exec(path);
+  if (one && call.method === "GET") {
+    return existingContacts.has(decodeURIComponent(one[1])) ? res(200, { object: "contact" }) : res(404, { name: "not_found" });
+  }
+  if (/^\/contacts\/.+\/topics$/.test(path)) {
+    return Array.isArray(body) ? res(200, { object: "contact_topics" }) : res(422, { message: "body must be an array" });
+  }
   return res(404, {});
 }
 
@@ -101,7 +111,7 @@ const kv = new KV();
 const env = {
   SPONSORSHIPS_KV: kv, GIVEWHEEL_USERNAME: "u@x", GIVEWHEEL_PASSWORD: "pw",
   ADMIN_SECRET: "adm", GIVEWHEEL_WEBHOOK_SECRET: "whsec",
-  RESEND_API_KEY: "re_test", RESEND_TOPIC_ID: "topic_run",
+  RESEND_API_KEY: "re_test", RESEND_TOPIC_ID: "topic_run", RESEND_GAP_MS: "0",
 };
 const bg = [];
 const makeCtx = (request) => ({ request, env, waitUntil: p => bg.push(p) });
@@ -315,6 +325,7 @@ ok(em && !em.body.html.includes("<b>Anna") && em.body.html.includes("&lt;b&gt;An
 ok(em && em.body.html.includes("https://run.teatrade.co.uk/#map-section") && em.body.text.includes("Mile 41"), "has map link and plain-text part");
 const sub = subs();
 ok(sub.length === 1 && sub[0].path === "/contacts" && sub[0].body.topics[0].id === "topic_run" && sub[0].body.topics[0].subscription === "opt_in", "opted-in donor subscribed to the run-updates topic only", sub);
+ok(sub.length === 1 && !("unsubscribed" in sub[0].body) && !("segments" in sub[0].body), "new contact is created with the topic only: no global flags, no segments", sub[0] && Object.keys(sub[0].body));
 ok(!(await kv.get("data")).includes("anna@example.com"), "email no longer stored once confirmation is sent");
 pub = await doPoll(true);
 ok(!JSON.stringify(pub).includes("example.com"), "email still absent from API output after confirmation");
@@ -342,6 +353,7 @@ reset(); existingContacts.add("eve@example.com");
 r = await doClaim({ pixel: 45, amount: 50, sponsor_name: "Eve", contact_email: "eve@example.com", updates_opt_in: true }, "10.0.0.6");
 await payFor(r, 50, "Eve");
 ok(subs().some(c => /\/contacts\/eve%40example\.com\/topics$/.test(c.path) && c.method === "PATCH"), "existing contact (e.g. on main list) gets topic opt-in via PATCH, not a new global subscription", subs().map(c => c.method + " " + c.path));
+ok(!resendCalls.some(c => c.path === "/contacts" && c.method === "POST"), "existing contact is never re-created or overwritten");
 
 reset(); const savedKey = env.RESEND_API_KEY; delete env.RESEND_API_KEY;
 r = await doClaim({ pixel: 46, amount: 50, sponsor_name: "Finn", contact_email: "finn@example.com", updates_opt_in: true }, "10.0.0.7");
@@ -367,6 +379,30 @@ await flush();
 const whj = await wr.json();
 ok(wr.status === 200 && whj.kind === "pending_match" && !JSON.stringify(whj).includes("example.com"), "webhook path confirms and its response carries no email", whj);
 ok(emails().length === 1, "webhook path sends the confirmation too");
+
+console.log("\n16. House rules: sign-off, replies, encoding, neighbourliness");
+ok(allEmails.length >= 5, "collected a spread of real emails to check", allEmails.length);
+ok(allEmails.every(e => !/\bRob\b/i.test(e.text) && !/\bRob\b/i.test(e.html)), "no email ever names a person");
+ok(allEmails.every(e => /Thank you for backing the run\.\nRun TeaTrade/.test(e.text) && /Thank you for backing the run\.<br>Run TeaTrade/.test(e.html)), "every email is signed exactly \"Run TeaTrade\" (text + HTML)");
+ok(allEmails.every(e => e.from === "Run TeaTrade <run@teatrade.co.uk>"), "every email is sent from Run TeaTrade <run@teatrade.co.uk>");
+ok(allEmails.every(e => e.reply_to === "contact@teatrade.co.uk"), "every email's Reply-To is contact@teatrade.co.uk");
+ok(allEmails.every(e => /^[\x00-\x7F]*$/.test(e.html) && /^[\x00-\x7F]*$/.test(e.subject)), "HTML and subject are pure ASCII (no mojibake possible)");
+ok(allEmails.some(e => e.html.includes("&#163;50")) && allEmails.some(e => e.text.includes("\u00a350")), "pound sign is correct in HTML (entity) and plain text");
+ok(allEmails.every(e => !/<img|<script|onerror/i.test(e.html)), "no injected markup in any email");
+
+reset(); resendMode = "ratelimit_once"; rateLimited = false;
+r = await doClaim({ pixel: 48, amount: 50, sponsor_name: "Iris", contact_email: "iris@example.com" }, "10.0.1.1");
+await payFor(r, 50, "Iris");
+resendMode = "ok";
+ok(emails().length === 2 && sentKeys.has(`confirm-${gwId}`), "a 429 from the shared rate limit is retried once, then succeeds", emails().length);
+
+reset();
+const ra = await doClaim({ pixel: 49, amount: 50, sponsor_name: "Ann", contact_email: "a1@example.com", updates_opt_in: true }, "10.0.1.2");
+const rb = await doClaim({ pixel: 51, amount: 50, sponsor_name: "Bea", contact_email: "b2@example.com", updates_opt_in: true }, "10.0.1.3");
+gwPay({ amount: 50, code: ra.body.code, name: "Ann" }); gwPay({ amount: 50, code: rb.body.code, name: "Bea" });
+await doPoll(); await flush();
+const who = resendCalls.map(c => c.body?.to?.[0] || c.body?.email || decodeURIComponent((c.path.match(/contacts\/([^/]+)/) || [])[1] || ""));
+ok(who.includes("a1@example.com") && who.includes("b2@example.com") && who.lastIndexOf("a1@example.com") < who.indexOf("b2@example.com"), "burst of donations is handled one donor at a time (never a flood of parallel API calls)", who);
 
 console.log(`\n==== ${pass} passed, ${fail} failed ====`);
 process.exit(fail ? 1 : 0);

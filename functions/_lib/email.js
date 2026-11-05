@@ -5,15 +5,23 @@
  * Env (all optional; with no RESEND_API_KEY nothing is sent):
  *   RESEND_API_KEY     Resend API key (Secret)
  *   RESEND_FROM        Defaults to "Run TeaTrade <run@teatrade.co.uk>"
- *   RESEND_REPLY_TO    Optional reply-to override
+ *   RESEND_REPLY_TO    Defaults to contact@teatrade.co.uk (donor replies land there)
  *   RESEND_TOPIC_ID    Resend Topic for run updates. Create it with default
  *                      subscription "Opt-out" so only people we explicitly
  *                      subscribe ever receive run updates.
+ *   RESEND_GAP_MS      Pause between donors (default 150). The Resend rate limit
+ *                      is shared by the whole account, including the main site.
+ *
+ * House rules: every email is signed "Run TeaTrade", never a personal name, and
+ * we only ever touch the contacts we create here (never existing ones' status).
  */
-const API         = "https://api.resend.com";
-const DEFAULT_FROM = "Run TeaTrade <run@teatrade.co.uk>";
-const SITE        = "https://run.teatrade.co.uk";
-const TIMEOUT_MS  = 8000;
+const API          = "https://api.resend.com";
+const DEFAULT_FROM  = "Run TeaTrade <run@teatrade.co.uk>";
+const DEFAULT_REPLY = "contact@teatrade.co.uk";
+export const SIGN_OFF = "Run TeaTrade";
+const SITE         = "https://run.teatrade.co.uk";
+const TIMEOUT_MS   = 8000;
+const GAP_MS       = 150;
 
 export function cleanEmail(v) {
   const s = String(v ?? "").trim().toLowerCase();
@@ -27,7 +35,7 @@ export function buildConfirmation(n) {
   const isMile = !!n.pixel;
   const gbp    = `£${Number(n.amount || 0).toLocaleString("en-GB")}`;
   const subject = isMile
-    ? `Mile ${n.pixel} is yours — thank you | Run TeaTrade`
+    ? `Mile ${n.pixel} is yours | Run TeaTrade`
     : "Thank you for supporting the Run TeaTrade 190-mile run";
 
   const headline = isMile ? `Mile ${n.pixel} is yours.` : "Thank you.";
@@ -46,7 +54,7 @@ export function buildConfirmation(n) {
     "", charity,
     isMile ? `\nSee your mile on the map: ${link}` : `\nFollow the run: ${link}`,
     updates ? `\n${updates}` : "",
-    "\nThank you for backing the run.\nRob",
+    "\nThank you for backing the run.\n" + SIGN_OFF,
     "\nYou're receiving this because you donated at run.teatrade.co.uk. Just reply if you have a question.",
   ].filter(s => s !== "").join("\n");
 
@@ -60,51 +68,67 @@ export function buildConfirmation(n) {
     <p style="font-size:14px;line-height:1.55;margin:0 0 20px;color:#5f6368;">${esc(charity)}</p>
     <p style="margin:0 0 20px;"><a href="${link}" style="display:inline-block;background:#f56600;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:999px;font-size:15px;">${isMile ? "See your mile on the map" : "Follow the run"}</a></p>
     ${updates ? `<p style="font-size:13px;line-height:1.5;margin:0 0 16px;color:#5f6368;">${esc(updates)}</p>` : ""}
-    <p style="font-size:15px;margin:0;">Thank you for backing the run.<br>Rob</p>
+    <p style="font-size:15px;margin:0;">Thank you for backing the run.<br>${SIGN_OFF}</p>
   </div>
   <p style="font-size:12px;line-height:1.5;color:#8a8d91;margin:14px 6px 0;">You're receiving this because you donated at run.teatrade.co.uk. Just reply to this email if you have a question.</p>
-</div></body></html>`;
+</div></body></html>`.replace(/[^\x00-\x7F]/gu, c => `&#${c.codePointAt(0)};`);   // pure ASCII: immune to charset mix-ups
 
   return { subject, html, text };
 }
 
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+// One retry on 429, honouring retry-after (capped), because the rate limit is
+// shared with the rest of the TeaTrade account.
 async function resend(env, path, { method = "POST", body, idempotencyKey } = {}) {
   const headers = {
     "authorization": `Bearer ${env.RESEND_API_KEY}`,
     "content-type":  "application/json",
   };
   if (idempotencyKey) headers["idempotency-key"] = idempotencyKey;
-  return fetch(`${API}${path}`, {
-    method, headers, body: JSON.stringify(body), signal: AbortSignal.timeout(TIMEOUT_MS),
+  const call = () => fetch(`${API}${path}`, {
+    method, headers, body: body === undefined ? undefined : JSON.stringify(body),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
   });
+  let r = await call();
+  if (r.status === 429) {
+    const ra = r.headers.get("retry-after");
+    await sleep(ra === null ? 1000 : Math.min(2000, Math.max(0, Number(ra) * 1000) || 0));
+    r = await call();
+  }
+  return r;
 }
 
 async function sendConfirmation(env, n) {
   const { subject, html, text } = buildConfirmation(n);
   const payload = {
     from: env.RESEND_FROM || DEFAULT_FROM,
+    reply_to: env.RESEND_REPLY_TO || DEFAULT_REPLY,
     to: [n.email], subject, html, text,
   };
-  if (env.RESEND_REPLY_TO) payload.reply_to = env.RESEND_REPLY_TO;
   const r = await resend(env, "/emails", { body: payload, idempotencyKey: `confirm-${n.gw_id}` });
   if (!r.ok) console.error("resend_confirmation_failed", r.status, (await r.text()).slice(0, 200));
 }
 
-// Subscribes the donor to the run-updates Topic only. Creating the contact
-// fails if they already exist (e.g. they're on the main TeaTrade list), so
-// fall back to updating their topic subscriptions.
+// Subscribes the donor to the run-updates Topic only. An existing contact (for
+// example someone already on the main TeaTrade list) is only ever given the
+// topic: we never create over them or touch their global subscription status.
 async function subscribeToUpdates(env, n) {
   if (!env.RESEND_TOPIC_ID) return;
   const topic = [{ id: env.RESEND_TOPIC_ID, subscription: "opt_in" }];
-  const created = await resend(env, "/contacts", {
-    body: { email: n.email, first_name: String(n.name || "").slice(0, 50), unsubscribed: false, topics: topic },
-  });
-  if (created.ok) return;
-  if (created.status >= 500 || created.status === 429) {
-    console.error("resend_contact_failed", created.status);
+  const email = encodeURIComponent(n.email);
+
+  const found = await resend(env, `/contacts/${email}`, { method: "GET" });
+  if (found.status === 404) {
+    const created = await resend(env, "/contacts", {
+      body: { email: n.email, first_name: String(n.name || "").slice(0, 50), topics: topic },
+    });
+    if (!created.ok) console.error("resend_contact_create_failed", created.status, (await created.text()).slice(0, 200));
     return;
   }
-  const updated = await resend(env, `/contacts/${encodeURIComponent(n.email)}/topics`, { method: "PATCH", body: topic });
+  if (!found.ok) { console.error("resend_contact_lookup_failed", found.status); return; }
+
+  const updated = await resend(env, `/contacts/${email}/topics`, { method: "PATCH", body: topic });
   if (!updated.ok) console.error("resend_topic_update_failed", updated.status, (await updated.text()).slice(0, 200));
 }
 
@@ -118,6 +142,12 @@ export async function notifyDonor(env, n) {
   }
 }
 
-export function notifyAll(env, notifications) {
-  return Promise.allSettled(notifications.map(n => notifyDonor(env, n)));
+// One donor at a time, with a pause between, so a burst of donations can't
+// crowd the account-wide API rate limit.
+export async function notifyAll(env, notifications) {
+  const gap = Number(env.RESEND_GAP_MS ?? GAP_MS);
+  for (let i = 0; i < notifications.length; i++) {
+    if (i > 0 && gap > 0) await sleep(gap);
+    await notifyDonor(env, notifications[i]);
+  }
 }
