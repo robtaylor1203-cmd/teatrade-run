@@ -16,12 +16,14 @@
  *
  * Secret is checked against env.ADMIN_SECRET.
  */
+import { cleanText, cleanLogo, safeEqual, initialsFor, sponsorColour } from "../../_lib/sponsor.js";
+
 export async function onRequestPost({ request, env }) {
   if (!env.ADMIN_SECRET) return j({ error: "admin_disabled" }, 500);
 
   let body;
   try { body = await request.json(); } catch { return j({ error: "bad_json" }, 400); }
-  if (body.secret !== env.ADMIN_SECRET) return j({ error: "forbidden" }, 403);
+  if (!safeEqual(body.secret, env.ADMIN_SECRET)) return j({ error: "forbidden" }, 403);
 
   const pixel = parseInt(body.pixel, 10);
   const gwId  = String(body.gw_id || "").trim();
@@ -45,18 +47,15 @@ export async function onRequestPost({ request, env }) {
 
   const orphan      = data.orphan_donations.find(o => String(o.gw_id) === gwId);
   const prior       = existingPixelIdx >= 0 ? data.sponsorships[existingPixelIdx] : null;
-  const tier        = body.tier        || prior?.tier        || "standard";
-  const donorType   = body.donor_type  || "individual";
-  const sponsorName = body.sponsor_name || orphan?.name      || prior?.sponsor || "Anonymous";
-  const message     = body.message      || orphan?.message   || prior?.message || "";
+  const tier        = ["standard", "featured", "premium"].includes(body.tier) ? body.tier : (prior?.tier || "standard");
+  const donorType   = (body.donor_type || prior?.donor_type) === "corporate" ? "corporate" : "individual";
+  const sponsorName = cleanText(body.sponsor_name || orphan?.name || prior?.sponsor, 80) || "Anonymous";
+  const message     = cleanText(body.message ?? orphan?.message ?? prior?.message, 200);
   const amount      = parseInt(body.amount, 10) || orphan?.amount || prior?.amount || 0;
-  const logo        = body.logo_url    ?? prior?.logo ?? "";
+  const logo        = body.logo_url === undefined ? (prior?.logo ?? "") : cleanLogo(body.logo_url, { allowHttps: true });
 
   // logoBg precedence: explicit body value → prior value → tier/donor default.
-  const defaultBg = donorType === "corporate" ? "#202124"
-                  : tier === "premium"  ? "#c5a572"
-                  : tier === "featured" ? "#1a73e8"
-                  : "#f56600";
+  const defaultBg = sponsorColour(donorType, tier);
   const logoBg = (body.logo_bg && /^#[0-9a-f]{3,8}$/i.test(body.logo_bg))
     ? body.logo_bg
     : (prior?.logoBg || defaultBg);
@@ -67,6 +66,7 @@ export async function onRequestPost({ request, env }) {
     initials: initialsFor(sponsorName),
     logo,
     logoBg,
+    donor_type: donorType,
     amount,
     tier,
     message,
@@ -93,15 +93,9 @@ export async function onRequestPost({ request, env }) {
   return j({ ok: true, pixel, gw_id: gwId, amount, updated: force && (existingPixelIdx >= 0 || existingDonationIdx >= 0) });
 }
 
-function initialsFor(name) {
-  return (name || "")
-    .split(/\s+/).filter(Boolean).slice(0, 2)
-    .map(w => w[0].toUpperCase()).join("");
-}
-
 function j(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json", "access-control-allow-origin": "*" },
+    headers: { "content-type": "application/json", "cache-control": "no-store" },
   });
 }

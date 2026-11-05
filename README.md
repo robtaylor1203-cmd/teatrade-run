@@ -4,79 +4,70 @@ Single-page charity-run microsite for `run.teatrade.co.uk` — 190 miles from
 Peterston Tea Estate (Wales) to the Cutty Sark (London) in support of
 **Alzheimer's Research UK** and the **UK Tea Trade Benevolent Society**.
 
-## Donation flow (Enthuse + Cloudflare Pages)
+## Donation flow (GiveWheel + Cloudflare Pages)
 
-The site never touches money. Donations are taken on **Enthuse**, which
-remits to the two charities directly. Sponsor pixels on the map sync to
-real donations via an Enthuse webhook.
+The site never touches money. Donations are taken on **GiveWheel**; the site
+reads GiveWheel's API to confirm payments and lock miles.
 
 ```
-visitor clicks mile
+visitor picks a mile  →  sponsor form (name, message, business logo)
+        │  POST /api/claim
+        ▼
+server prices the mile from its number (£50 / £100 blue every 10th / £250 gold 1 & 190),
+holds it 30 min, returns the GiveWheel checkout URL carrying a lock code M{mile}-XXXX
         │
         ▼
-sponsor form (donor type, name, message, optional logo)
-        │   POST /api/claim
-        ▼
-Cloudflare Function reserves the pixel as `pending`
-        │   returns enthuse_url with ?claim_id=…
-        ▼
-visitor donates on Enthuse
+visitor pays on GiveWheel (amount locked)
         │
         ▼
-Enthuse fires webhook → /api/enthuse-webhook
-        │   verifies HMAC, finds pending claim, confirms
-        ▼
-sponsorships.json (in KV) is updated
+GET /api/sponsorships (polled by every visitor, cached 15s at the edge)
+  reads GiveWheel's donations API, matches each payment to its claim by lock code,
+  and turns the mile into a confirmed sponsorship (name, message, logo, colour)
         │
         ▼
-front-end polls /api/sponsorships every 30s →
-pixel turns orange / blue / black, total raised animates up
+map + grid update within ~45s: orange individual, black business, gold premium
 ```
 
-### Required environment variables (Cloudflare Pages → Settings → Environment variables)
+- **Safety rules** live in one place: [`functions/_lib/sponsor.js`](functions/_lib/sponsor.js)
+  (pricing, matching, sanitising). A payment below the mile's price never locks it,
+  a mile can't be double-booked, and anything unmatched becomes an *orphan*.
+- **Orphans / manual fixes**: open `/admin/`, enter `ADMIN_SECRET`. Unmatched
+  donations are listed there and can be assigned to a mile.
+- **"Donate any amount"** uses `/api/donate` with a `g_` code and doesn't lock a mile.
+- **Logos** are stored at KV `logo:<code>` and served from `/api/logo/<code>`.
+  Unpaid claims' logos expire after 3 days.
+- `/api/givewheel-webhook` is optional and disabled unless `GIVEWHEEL_WEBHOOK_SECRET`
+  is set. `/api/enthuse-webhook` is a leftover from an earlier design and unused.
 
-| Name | Description |
+### Cloudflare Pages settings
+
+KV binding: `SPONSORSHIPS_KV`.
+
+| Variable | Purpose |
 |---|---|
-| `ENTHUSE_CAMPAIGN_URL`   | Public URL of your Enthuse campaign donation page. |
-| `ENTHUSE_WEBHOOK_SECRET` | HMAC secret shared with Enthuse for webhook verification. |
-| `PENDING_TTL_MIN`        | Optional. Minutes a pending claim is held (default 30). |
-| `CLOUDINARY_CLOUD_NAME`  | For unsigned logo uploads (set in `index.html` config block). |
-| `CLOUDINARY_UPLOAD_PRESET` | Cloudinary unsigned preset name. |
+| `GIVEWHEEL_USERNAME` / `GIVEWHEEL_PASSWORD` | GiveWheel login used to mint and auto-refresh API tokens (password as Secret). **Required** for mile confirmation. |
+| `ADMIN_SECRET` | Unlocks `/admin/` and the admin-only fields of `/api/sponsorships`. |
+| `GIVEWHEEL_WEBHOOK_SECRET` | Optional. Enables the signed webhook for instant attribution. |
+| `GIVEWHEEL_FUNDRAISING_ID`, `GIVEWHEEL_SHORTLINK`, `GIVEWHEEL_SLUG`, `GIVEWHEEL_API_TOKEN` | Optional overrides. |
 
-### Required Cloudflare KV binding
-
-Bind a KV namespace called `SPONSORSHIPS_KV` to the Pages project. The
-functions read and write a single key, `data`, holding the JSON shape
-documented in [`sponsorships.json`](sponsorships.json).
-
-To bootstrap the namespace from the committed file:
+Bootstrap an empty store (only needed for a brand-new KV namespace):
 
 ```powershell
 wrangler kv key put --binding=SPONSORSHIPS_KV "data" --path=sponsorships.json
 ```
 
-### Required Enthuse setup
-
-Email Enthuse partner support (template in
-[`docs/enthuse-partner-request.md`](docs/enthuse-partner-request.md)) and
-ask for:
-
-1. A campaign on your behalf (or under one of the charities) with
-   pre-set amounts of £50 / £100 / £250.
-2. **Custom donation fields** (`claim_id`, `mile`, `tier`, `donor_type`).
-3. **Webhook access** for `donation.completed`, posting to
-   `https://run.teatrade.co.uk/api/enthuse-webhook` with HMAC-SHA256
-   signature header `x-enthuse-signature`.
-
-### Local dev
+### Testing
 
 ```powershell
-npm i -g wrangler
-wrangler pages dev . --kv SPONSORSHIPS_KV
+node tools/acid-test.mjs
 ```
 
-The static site lives at `/index.html`. Functions live under `/functions/api/`.
+Runs the real functions against a mock KV and mock GiveWheel (claim → pay →
+confirm, underpayment, double-booking, XSS, abuse limits, caching). No network,
+no real payments. Run it after any change to `functions/`.
+
+Before launch, also make one real £50 test donation end to end.
 
 ### Deployment
 
-Push to `main`; Cloudflare Pages auto-builds and deploys.
+Push to `main`; Cloudflare Pages auto-builds and deploys. No build step.

@@ -3898,7 +3898,7 @@ html {
    CONFIG — single source of truth.
    ================================================================ */
 const CONFIG = {
-  raisedTotal: 4250,
+  raisedTotal: 0,
   raisedGoal:  19000,
 
   /* Number of "pixels" the route is broken into for sponsorship.
@@ -3944,22 +3944,8 @@ const CONFIG = {
       fact: "Once the fastest tea clipper in the world. A fitting finish line." },
   ],
 
-  /* Sponsored pixels. Index here = pixel number (1..pixelCount).
-     Once a real donation flow is wired in, build this array from
-     your backend / GiveWheel / Stripe. */
-  sponsoredPixels: [
-    { pixel: 14,  sponsor: "Welsh Tea Co.",        initials: "WT", logoBg: "#c8102e", amount: 50,   tier: "standard",  message: "Cymru am byth! Keep going." },
-    { pixel: 27,  sponsor: "Severn Crossings Ltd", initials: "SC", logoBg: "#1a73e8", amount: 25,   tier: "standard",  message: "Goodbye Wales, hello England." },
-    { pixel: 50,  sponsor: "Bristol Brew Bar",     initials: "BB", logoBg: "#6a4c2a", amount: 50,   tier: "standard",  message: "Halfway to halfway — easy!" },
-    { pixel: 64,  sponsor: "Bath Tea Rooms",       initials: "BT", logoBg: "#b87333", amount: 30,   tier: "standard",  message: "Roman roads still hurt." },
-    { pixel: 75,  sponsor: "Acme Tea Importers",   initials: "AT", logoBg: "#202124", amount: 250,  tier: "corporate", message: "Proud sponsors of one tired runner." },
-    { pixel: 96,  sponsor: "The Tasting Room",     initials: "TR", logoBg: "#5f6368", amount: 100,  tier: "standard",  message: "Halfway hero!" },
-    { pixel: 120, sponsor: "Berkshire Brews",      initials: "BB", logoBg: "#0b6e4f", amount: 40,   tier: "standard",  message: "One foot, then the other." },
-    { pixel: 138, sponsor: "Reading Roasters",     initials: "RR", logoBg: "#7a2e2e", amount: 50,   tier: "standard",  message: "Nearly there — kettle is on." },
-    { pixel: 155, sponsor: "Henley Hounds RC",     initials: "HH", logoBg: "#1a73e8", amount: 35,   tier: "standard",  message: "From the river crew." },
-    { pixel: 170, sponsor: "Thames Tea Co.",       initials: "TT", logoBg: "#202124", amount: 250,  tier: "corporate", message: "Just follow the river home." },
-    { pixel: 185, sponsor: "Greenwich Gazette",    initials: "GG", logoBg: "#3a5a40", amount: 75,   tier: "standard",  message: "Final push! See you at the Sark." },
-  ],
+  /* Confirmed sponsorships. Populated from /api/sponsorships on load. */
+  sponsoredPixels: [],
 };
 
 /* ================================================================
@@ -4004,18 +3990,21 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ================================================================
    1. Total Raised — animated count-up + bar
    ================================================================ */
+let shownRaised = 0;   // value currently displayed, so updates count up from it
 function animateRaised() {
   const el    = document.getElementById('raisedAmount');
   const pctEl = document.getElementById('raisedPercent');
   const bar   = document.getElementById('raisedBar');
+  const from   = shownRaised;
   const target = CONFIG.raisedTotal;
   const goal   = CONFIG.raisedGoal;
+  shownRaised  = target;
   const start  = performance.now();
   const dur    = 1600;
   function frame(now) {
     const t = Math.min(1, (now - start) / dur);
     const eased = 1 - Math.pow(1 - t, 3);
-    el.textContent = '£' + Math.round(target * eased).toLocaleString('en-GB');
+    el.textContent = '£' + Math.round(from + (target - from) * eased).toLocaleString('en-GB');
     if (t < 1) requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -4160,25 +4149,51 @@ function pointAlongRoute(t) {
   return routeLatLngs[routeLatLngs.length - 1];
 }
 
+/* Sponsor data comes from the public API, so every value is escaped /
+   whitelisted before it goes into markup. */
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function safeLogoSrc(u) {
+  if (typeof u !== 'string') return '';
+  if (/^data:image\/(png|jpeg|webp|svg\+xml);base64,[A-Za-z0-9+/=]+$/.test(u)) return u;
+  if (/^https:\/\/[^\s"'<>\\]+$/i.test(u)) return u;
+  if (/^\/(?!\/)[^\s"'<>\\]*$/.test(u)) return u;
+  return '';
+}
+function safeColour(c) {
+  return /^#[0-9a-f]{3,8}$/i.test(c || '') ? c : '#5f6368';
+}
+/* Business sponsors render black regardless of mile tier; the seed data
+   marks them with tier "corporate", the API with donor_type. */
+function sponsorClasses(s) {
+  let c = '';
+  if (s.tier === 'premium') c += ' tier-premium';
+  if (s.tier === 'corporate' || s.donor_type === 'corporate') c += ' tier-corporate';
+  return c;
+}
+
 /* Build the markup for the wide hover card.
    Used by both the Leaflet pixel tooltip and the in-grid mile tooltip. */
 function sponsorCardHTML(mileNum, sponsor, availableTier) {
   const isPremiumAvailable = availableTier === 'premium';
   const isFeaturedAvailable = availableTier === 'featured';
+  const logoSrc = sponsor ? safeLogoSrc(sponsor.logo) : '';
   const logoBlock = sponsor
-    ? `<div class="sponsor-card__logo" style="background:${sponsor.logoBg || '#5f6368'};">${
-         sponsor.logo
-           ? `<img src="${sponsor.logo}" alt="${sponsor.sponsor} logo">`
-           : (sponsor.initials || sponsor.sponsor.slice(0, 2).toUpperCase())
+    ? `<div class="sponsor-card__logo" style="background:${safeColour(sponsor.logoBg)};">${
+         logoSrc
+           ? `<img src="${esc(logoSrc)}" alt="${esc(sponsor.sponsor)} logo">`
+           : esc(sponsor.initials || String(sponsor.sponsor || '').slice(0, 2).toUpperCase())
        }</div>`
     : `<div class="sponsor-card__logo sponsor-card__logo--empty">Your<br>logo<br>here</div>`;
 
   const body = sponsor
     ? `
         <div class="sponsor-card__eyebrow">Mile ${mileNum} · Sponsored</div>
-        <div class="sponsor-card__name">${sponsor.sponsor}</div>
-        <div class="sponsor-card__amt">£${sponsor.amount.toLocaleString('en-GB')}</div>
-        <div class="sponsor-card__msg">“${sponsor.message}”</div>
+        <div class="sponsor-card__name">${esc(sponsor.sponsor)}</div>
+        <div class="sponsor-card__amt">£${Number(sponsor.amount || 0).toLocaleString('en-GB')}</div>
+        ${sponsor.message ? `<div class="sponsor-card__msg">“${esc(sponsor.message)}”</div>` : ''}
       `
     : isPremiumAvailable
       ? `
@@ -4229,9 +4244,7 @@ function buildPixels() {
 
     let cls = 'pixel';
     if (sponsor) {
-      cls += ' pixel--claimed';
-      if (sponsor.tier === 'premium')   cls += ' tier-premium';
-      if (sponsor.tier === 'corporate') cls += ' tier-corporate';
+      cls += ' pixel--claimed' + sponsorClasses(sponsor);
     } else if (availableTier === 'premium') {
       cls += ' pixel--premium-available';
     } else if (availableTier === 'featured') {
@@ -4256,10 +4269,13 @@ function buildPixels() {
       sticky: false,
     });
 
-    // Only un-sponsored miles open the sponsor modal. Sponsored ones
-    // are locked to avoid double-sponsorship of the same mile.
+    // Available miles open the sponsor form. Sponsored miles can't be
+    // re-sponsored, but tapping one opens the preview so touch users (who
+    // have no hover) can read the logo and message.
     if (!sponsor) {
       marker.on('click', () => openSponsorModal(i, availableTier || 'standard'));
+    } else {
+      marker.on('click', () => openMilePreviewModal(i, sponsor, null));
     }
   }
 }
@@ -4423,8 +4439,7 @@ function buildMilesGrid() {
     if (s) {
       claimed++;
       block.classList.add('mile--claimed');
-      if (s.tier === 'premium')   block.classList.add('tier-premium');
-      if (s.tier === 'corporate') block.classList.add('tier-corporate');
+      sponsorClasses(s).trim().split(' ').filter(Boolean).forEach(c => block.classList.add(c));
       block.setAttribute('aria-label',
         `Mile ${i} — sponsored by ${s.sponsor}, £${s.amount}`);
     } else if (availableTier === 'premium') {
@@ -4672,8 +4687,22 @@ const SPONSOR_API = {
 // resized to a 256px square and stored as a data URL in the hidden
 // logo_url field. No external upload service is involved.
 const LOGO_MAX_BYTES = 2 * 1024 * 1024;       // 2 MB raw file cap
+const LOGO_MAX_DATAURL = 480_000;              // server rejects anything bigger
 const LOGO_OUTPUT_SIZE = 256;                  // output square size (px)
 const LOGO_ALLOWED_TYPES = ['image/png','image/jpeg','image/webp','image/svg+xml'];
+
+/* Anonymous per-browser id so a donor who comes back from checkout can
+   re-reserve their own mile instead of being told it's taken. */
+function clientToken() {
+  try {
+    let t = localStorage.getItem('rtt_client');
+    if (!/^[A-Za-z0-9_-]{8,64}$/.test(t || '')) {
+      t = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()).replace(/[^A-Za-z0-9_-]/g, '');
+      localStorage.setItem('rtt_client', t);
+    }
+    return t;
+  } catch (_) { return null; }
+}
 
 let openSponsorForm = () => {};
 
@@ -4801,7 +4830,9 @@ function setupSponsorForm() {
           const h = img.height * scale;
           ctx2d.drawImage(img, (LOGO_OUTPUT_SIZE - w) / 2, (LOGO_OUTPUT_SIZE - h) / 2, w, h);
           URL.revokeObjectURL(url);
-          resolve(canvas.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.9));
+          let out = canvas.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.9);
+          if (out.length > LOGO_MAX_DATAURL) out = canvas.toDataURL('image/jpeg', 0.85);
+          resolve(out);
         } catch (err) { URL.revokeObjectURL(url); reject(err); }
       };
       img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode_failed')); };
@@ -4836,6 +4867,10 @@ function setupSponsorForm() {
       const dataUrl = file.type === 'image/svg+xml'
         ? await readSvgAsDataUrl(file)
         : await resizeRasterToDataUrl(file);
+      if (dataUrl.length > LOGO_MAX_DATAURL) {
+        resetLogo('Logo is too detailed — try a simpler or smaller file.');
+        return;
+      }
       setLogo(dataUrl);
     } catch (err) {
       resetLogo('Could not read that file — please try another.');
@@ -4851,6 +4886,7 @@ function setupSponsorForm() {
       pixel:         ctx.pixel,
       tier:          ctx.tier,
       amount:        ctx.amount,
+      client_token:  clientToken(),
       donor_type:    fd.get('donor_type'),
       sponsor_name:  (fd.get('sponsor_name') || '').toString().trim(),
       message:       (fd.get('message') || '').toString().trim(),
@@ -4876,7 +4912,10 @@ function setupSponsorForm() {
         const msg = ({
           already_claimed: 'This mile has just been sponsored — please pick another.',
           pending:         'Someone else is currently sponsoring this mile — try again in a few minutes.',
-          bad_amount:      'Amount mismatch. Please refresh and try again.',
+          bad_amount:      'The price has changed. Please refresh the page and try again.',
+          bad_name:        'Please enter a name.',
+          bad_logo:        'That logo could not be used — please try a smaller PNG, JPG or SVG.',
+          too_many:        'You have several miles reserved already — please complete those first.',
         })[data.error] || 'Something went wrong reserving your mile. Please try again.';
         submitBtn.disabled = false;
         submitBtn.innerHTML = `Continue to GiveWheel · <span>£${ctx.amount}</span>`;
@@ -5023,41 +5062,54 @@ function setupDonateAnyModal() {
    re-renders the map pixels + miles grid + raised orb so a donation
    appears within seconds of completing on GiveWheel.
    ================================================================ */
+let lastSponsorSig = null;   // detects real changes so open tooltips aren't wiped every poll
 async function refreshSponsorships() {
   try {
     const r = await fetch(SPONSOR_API.list + '?t=' + Date.now(), { cache: 'no-store' });
     if (!r.ok) return;
     const data = await r.json();
+    let sponsorsChanged = false;
+    let totalChanged = false;
     if (Array.isArray(data.sponsorships)) {
-      CONFIG.sponsoredPixels = data.sponsorships;
+      const sig = JSON.stringify(data.sponsorships);
+      if (sig !== lastSponsorSig) {
+        lastSponsorSig = sig;
+        CONFIG.sponsoredPixels = data.sponsorships;
+        sponsorsChanged = true;
+      }
     }
     if (Number.isFinite(data.raised_total)) {
-      // Check if the total has increased and show a toast
       ToastManager.checkDonations(data.raised_total);
-      CONFIG.raisedTotal = data.raised_total;
+      if (data.raised_total !== CONFIG.raisedTotal) {
+        CONFIG.raisedTotal = data.raised_total;
+        totalChanged = true;
+      }
     }
-    if (Number.isFinite(data.raised_goal)) {
+    if (Number.isFinite(data.raised_goal) && data.raised_goal !== CONFIG.raisedGoal) {
       CONFIG.raisedGoal = data.raised_goal;
+      totalChanged = true;
     }
-    rerenderSponsorViews();
+    rerenderSponsorViews({ sponsors: sponsorsChanged, total: totalChanged });
   } catch (_) { /* offline — keep last-known values */ }
 }
 
-function rerenderSponsorViews() {
-  // Wipe + rebuild the Leaflet pixels.
-  if (Array.isArray(pixelMarkers) && leafletMap) {
-    pixelMarkers.forEach(m => leafletMap.removeLayer(m));
-    pixelMarkers.length = 0;
-    if (typeof buildPixels === 'function') buildPixels();
-  }
-  // Wipe + rebuild the in-panel miles grid.
-  const grid = document.getElementById('milesGrid');
-  if (grid && typeof buildMilesGrid === 'function') {
-    grid.innerHTML = '';
-    buildMilesGrid();
+function rerenderSponsorViews({ sponsors = true, total = true } = {}) {
+  if (sponsors) {
+    // Wipe + rebuild the Leaflet pixels.
+    if (Array.isArray(pixelMarkers) && leafletMap) {
+      pixelMarkers.forEach(m => leafletMap.removeLayer(m));
+      pixelMarkers.length = 0;
+      if (typeof buildPixels === 'function') buildPixels();
+    }
+    // Wipe + rebuild the in-panel miles grid.
+    const grid = document.getElementById('milesGrid');
+    if (grid && typeof buildMilesGrid === 'function') {
+      grid.innerHTML = '';
+      buildMilesGrid();
+    }
   }
   // Refresh the £ raised orb.
-  if (typeof animateRaised === 'function') animateRaised();
+  if (total && typeof animateRaised === 'function') animateRaised();
 }
 
 /* ================================================================
@@ -5479,7 +5531,7 @@ function setupGearModal() {
    ================================================================ */
 const ToastManager = {
   container: document.getElementById('toast-container'),
-  lastRaised: CONFIG.raisedTotal,
+  lastRaised: null,   // set from the first API response so page loads don't toast
   lastStravaDist: 0,
 
   show(title, msg, type = 'donation') {
@@ -5508,6 +5560,7 @@ const ToastManager = {
   },
 
   checkDonations(newTotal) {
+    if (this.lastRaised === null) { this.lastRaised = newTotal; return; }
     if (newTotal > this.lastRaised) {
       const diff = newTotal - this.lastRaised;
       this.show('New Donation!', `Someone just contributed £${diff} to the run.`);

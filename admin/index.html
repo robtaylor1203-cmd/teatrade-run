@@ -138,7 +138,7 @@ async function testSecret(secret) {
 
 async function load() {
   try {
-    const r = await fetch('/api/sponsorships', { cache: 'no-store' });
+    const r = await fetch('/api/sponsorships', { cache: 'no-store', headers: { 'x-admin-secret': SECRET } });
     DATA = await r.json();
     render();
   } catch (e) { toast('Failed to load data: ' + e.message, true); }
@@ -150,8 +150,8 @@ function render() {
   const goal = DATA.raised_goal || 19000;
   $('#totals').textContent = `£${raised.toLocaleString()} / £${goal.toLocaleString()} raised`;
 
-  // We need the full server state including orphans + pending detail.
-  // /api/sponsorships exposes orphan_donations + pending_pixels publicly.
+  // Orphans and diagnostics are only returned when the x-admin-secret header
+  // is valid (see load()).
   const orphans = DATA.orphan_donations || [];
   const spons   = DATA.sponsorships || [];
   const pendingPixels = DATA.pending_pixels || [];
