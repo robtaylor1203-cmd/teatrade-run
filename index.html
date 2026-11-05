@@ -2028,6 +2028,15 @@ html {
   padding: 10px 14px;
   font-size: 0.85rem;
 }
+.sponsor-form__note {
+  background: rgba(46, 160, 67, 0.08);
+  border: 1px solid rgba(46, 160, 67, 0.35);
+  color: #1e6b2f;
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
 
 /* Donate Any Amount — chip presets + £ prefix input */
 .donate-amount-row {
@@ -2892,6 +2901,15 @@ html {
   border-color: var(--gold-deep);
   box-shadow: 0 24px 48px rgba(197, 165, 114, 0.12);
 }
+/* Bidding closed or already sponsored: no hover lift, not clickable. */
+.gear-card.is-closed { cursor: default; opacity: 0.72; }
+.gear-card.is-closed:hover {
+  transform: none;
+  background: var(--bg);
+  border-color: var(--hairline);
+  box-shadow: none;
+}
+.gear-card.is-closed:hover .gear-bid { color: var(--text); }
 
 .gear-pulse {
   align-self: flex-end; /* Pushes it to the right within the flow */
@@ -3301,14 +3319,14 @@ html {
           Secure prime <strong>real estate.</strong>
         </h2>
         <p class="hero-lede" style="font-size: 0.95rem;">
-          Place your brand on the official 190-mile run kit. This is a closed-bid auction—submit your maximum bid, and we will contact the winners on January 31st to arrange the GiveWheel donation and logo files.
+          Place your brand on the official 190-mile run kit. This is a closed-bid auction: place one private bid per item by the end of <strong>28 February 2027</strong>. Bids are never published, and only the winners are contacted. Winners then complete their GiveWheel donation and supply logo files by <strong>7 March</strong>, so everything can be printed in time for the run on 2 April.
         </p>
       </div>
     </div>
 
     <div class="gear-carousel" role="region" aria-label="Gear Auction Carousel">
       
-      <div class="gear-card is-gold js-open-bid" data-item="Front Chest (T-Shirt)" data-min="500">
+      <div class="gear-card is-gold js-open-bid" data-id="front-chest" data-item="Front Chest (T-Shirt)" data-min="500">
         <div class="gear-pulse" style="color: var(--gold-deep);"><div class="gear-pulse__dot" style="background: var(--gold-deep); box-shadow: 0 0 0 0 rgba(197,165,114,0.4);"></div> Premium</div>
         <div class="gear-diagram">
           <svg viewBox="0 0 120 120">
@@ -3325,7 +3343,7 @@ html {
         <div class="gear-bid">Place Bid <span>→</span></div>
       </div>
 
-      <div class="gear-card js-open-bid" data-item="Upper Back (T-Shirt)" data-min="400">
+      <div class="gear-card js-open-bid" data-id="upper-back" data-item="Upper Back (T-Shirt)" data-min="400">
         <div class="gear-pulse"><div class="gear-pulse__dot"></div> Available</div>
         <div class="gear-diagram">
           <svg viewBox="0 0 120 120">
@@ -3342,7 +3360,7 @@ html {
         <div class="gear-bid">Place Bid <span>→</span></div>
       </div>
 
-      <div class="gear-card js-open-bid" data-item="Right Sleeve (T-Shirt)" data-min="250">
+      <div class="gear-card js-open-bid" data-id="right-sleeve" data-item="Right Sleeve (T-Shirt)" data-min="250">
         <div class="gear-pulse"><div class="gear-pulse__dot"></div> Available</div>
         <div class="gear-diagram">
           <svg viewBox="0 0 120 120">
@@ -3359,7 +3377,7 @@ html {
         <div class="gear-bid">Place Bid <span>→</span></div>
       </div>
 
-      <div class="gear-card js-open-bid" data-item="Left Sleeve (T-Shirt)" data-min="250">
+      <div class="gear-card js-open-bid" data-id="left-sleeve" data-item="Left Sleeve (T-Shirt)" data-min="250">
         <div class="gear-pulse"><div class="gear-pulse__dot"></div> Available</div>
         <div class="gear-diagram">
           <svg viewBox="0 0 120 120">
@@ -3376,7 +3394,7 @@ html {
         <div class="gear-bid">Place Bid <span>→</span></div>
       </div>
 
-      <div class="gear-card js-open-bid" data-item="Running Cap (Front Panel)" data-min="150">
+      <div class="gear-card js-open-bid" data-id="cap" data-item="Running Cap (Front Panel)" data-min="150">
         <div class="gear-pulse"><div class="gear-pulse__dot"></div> Available</div>
         <div class="gear-diagram">
           <svg viewBox="0 0 120 120">
@@ -3391,7 +3409,7 @@ html {
         <div class="gear-bid">Place Bid <span>→</span></div>
       </div>
 
-      <div class="gear-card js-open-bid" data-item="Right Leg (Trousers)" data-min="200">
+      <div class="gear-card js-open-bid" data-id="right-leg-trousers" data-item="Right Leg (Trousers)" data-min="200">
         <div class="gear-pulse"><div class="gear-pulse__dot"></div> Available</div>
         <div class="gear-diagram">
           <svg viewBox="0 0 120 120">
@@ -3406,7 +3424,7 @@ html {
         <div class="gear-bid">Place Bid <span>→</span></div>
       </div>
       
-      <div class="gear-card js-open-bid" data-item="Left Leg (Trousers)" data-min="200">
+      <div class="gear-card js-open-bid" data-id="left-leg-trousers" data-item="Left Leg (Trousers)" data-min="200">
         <div class="gear-pulse"><div class="gear-pulse__dot"></div> Available</div>
         <div class="gear-diagram">
           <svg viewBox="0 0 120 120">
@@ -3421,7 +3439,7 @@ html {
         <div class="gear-bid">Place Bid <span>→</span></div>
       </div>
 
-      <div class="gear-card js-open-bid" data-item="Right Leg (Shorts)" data-min="150">
+      <div class="gear-card js-open-bid" data-id="right-leg-shorts" data-item="Right Leg (Shorts)" data-min="150">
         <div class="gear-pulse"><div class="gear-pulse__dot"></div> Available</div>
         <div class="gear-diagram">
           <svg viewBox="0 0 120 120">
@@ -3436,7 +3454,7 @@ html {
         <div class="gear-bid">Place Bid <span>→</span></div>
       </div>
       
-      <div class="gear-card js-open-bid" data-item="Left Leg (Shorts)" data-min="150">
+      <div class="gear-card js-open-bid" data-id="left-leg-shorts" data-item="Left Leg (Shorts)" data-min="150">
         <div class="gear-pulse"><div class="gear-pulse__dot"></div> Available</div>
         <div class="gear-diagram">
           <svg viewBox="0 0 120 120">
@@ -3843,28 +3861,32 @@ html {
     <button class="sponsor-glass__close" id="gearBidClose" aria-label="Close">×</button>
     <div class="eyebrow">Corporate Sponsorship</div>
     <h3 id="gearBidTitle">Bid on <strong>Gear</strong>.</h3>
-    <p class="lede">Submit your sealed bid. We will contact the highest bidder when the auction closes to arrange the GiveWheel donation and collect logo files.</p>
+    <p class="lede">Submit your sealed bid. It is private and never published. We'll email you a link to confirm it (a bid only counts once confirmed), and after bidding closes on 28 February the winners are contacted to complete their GiveWheel donation by 7 March.</p>
 
-    <form id="gearBidForm" class="sponsor-form">
+    <form id="gearBidForm" class="sponsor-form" novalidate>
       <input type="hidden" id="gearBidItemName" name="item">
+      <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
       
       <label class="sponsor-form__field">
         <span class="sponsor-form__label">Company Name</span>
-        <input type="text" name="company_name" required placeholder="e.g. Welsh Tea Co.">
+        <input type="text" name="company_name" maxlength="80" required placeholder="e.g. Welsh Tea Co.">
       </label>
 
       <label class="sponsor-form__field">
-        <span class="sponsor-form__label">Contact Email</span>
+        <span class="sponsor-form__label">Contact Email <span class="sponsor-form__hint">(we'll send your confirmation here)</span></span>
         <input type="email" name="contact_email" required placeholder="hello@company.com">
       </label>
 
       <label class="sponsor-form__field">
-        <span class="sponsor-form__label" id="gearBidAmountLabel">Your Maximum Bid (£)</span>
+        <span class="sponsor-form__label" id="gearBidAmountLabel">Your Bid (£)</span>
         <div class="donate-amount-input">
           <span class="donate-amount-input__prefix">£</span>
-          <input type="number" name="bid_amount" id="gearBidAmount" required placeholder="0" inputmode="numeric">
+          <input type="number" name="bid_amount" id="gearBidAmount" required min="1" step="1" placeholder="0" inputmode="numeric">
         </div>
       </label>
+
+      <div class="sponsor-form__error" id="gearBidError" role="alert" hidden></div>
+      <div class="sponsor-form__note" id="gearBidNote" role="status" hidden></div>
 
       <button type="submit" class="btn btn-primary" id="gearBidSubmit">
         Submit Sealed Bid
@@ -5443,25 +5465,38 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupGearModal() {
   const modal = document.getElementById('gearBidModal');
   if (!modal) return;
-  const closeBtn = document.getElementById('gearBidClose');
-  const titleEl = document.getElementById('gearBidTitle');
-  const itemInput = document.getElementById('gearBidItemName');
+  const closeBtn    = document.getElementById('gearBidClose');
+  const titleEl     = document.getElementById('gearBidTitle');
+  const itemInput   = document.getElementById('gearBidItemName');
   const amountInput = document.getElementById('gearBidAmount');
   const amountLabel = document.getElementById('gearBidAmountLabel');
-  const form = document.getElementById('gearBidForm');
-  const errorEl = document.getElementById('gearBidError'); 
-  
-  function open(itemName, isGold) {
+  const form        = document.getElementById('gearBidForm');
+  const errorEl     = document.getElementById('gearBidError');
+  const noteEl      = document.getElementById('gearBidNote');
+  const btn         = document.getElementById('gearBidSubmit');
+  let current = null;   // { id, name, min }
+
+  function open(card) {
+    if (card.dataset.state && card.dataset.state !== 'open') return;
+    current = { id: card.dataset.id, name: card.dataset.item, min: Number(card.dataset.min) || 1 };
     form.reset();
-    if (errorEl) errorEl.hidden = true;
-    itemInput.value = itemName;
-    titleEl.innerHTML = `Bid on <strong>${itemName}</strong>.`;
-    
-    amountInput.removeAttribute('min');
-    amountInput.placeholder = `e.g. 100`;
-    amountLabel.textContent = `Your Maximum Bid (£)`;
-    
-    modal.classList.toggle('is-premium', isGold);
+    errorEl.hidden = true;
+    noteEl.hidden = true;
+    form.hidden = false;
+    btn.disabled = false;
+    btn.innerHTML = 'Submit Sealed Bid';
+    itemInput.value = current.id;
+    titleEl.textContent = '';
+    titleEl.append('Bid on ');
+    const strong = document.createElement('strong');
+    strong.textContent = current.name;
+    titleEl.append(strong, '.');
+
+    amountInput.min = String(current.min);
+    amountInput.placeholder = `Minimum £${current.min.toLocaleString('en-GB')}`;
+    amountLabel.textContent = `Your Bid (£) · minimum £${current.min.toLocaleString('en-GB')}`;
+
+    modal.classList.toggle('is-premium', card.classList.contains('is-gold'));
     modal.classList.add('is-open');
     setTimeout(() => form.querySelector('input[name="company_name"]').focus(), 60);
   }
@@ -5469,65 +5504,96 @@ function setupGearModal() {
   function close() { modal.classList.remove('is-open'); }
   closeBtn.addEventListener('click', close);
   modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
-  
-  document.querySelectorAll('.js-open-bid').forEach(card => {
-    card.addEventListener('click', () => {
-      open(card.dataset.item, card.classList.contains('is-gold'));
-    });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('is-open')) close();
   });
+
+  document.querySelectorAll('.js-open-bid').forEach(card => {
+    card.addEventListener('click', () => open(card));
+  });
+
+  function showError(msg) { errorEl.textContent = msg; errorEl.hidden = false; }
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (errorEl) errorEl.hidden = true; 
-    
+    errorEl.hidden = true;
+    if (!current) return;
+
     const fd = new FormData(form);
     const company = (fd.get('company_name') || '').toString().trim();
-    const email = (fd.get('contact_email') || '').toString().trim();
-    const bid = Number(fd.get('bid_amount'));
+    const email   = (fd.get('contact_email') || '').toString().trim();
+    const bid     = Number(fd.get('bid_amount'));
 
-    if (!company) {
-      errorEl.textContent = 'Please enter your Company Name.';
-      errorEl.hidden = false;
-      return;
-    }
-    if (!email || !/^[^@]+@[^@]+\.[a-zA-Z]{2,}$/.test(email)) {
-      errorEl.textContent = 'Please enter a valid email address.';
-      errorEl.hidden = false;
-      return;
-    }
-    if (!bid || bid <= 0) {
-      errorEl.textContent = `Please enter a valid bid amount.`;
-      errorEl.hidden = false;
-      return;
-    }
+    if (!company) return showError('Please enter your company name.');
+    if (!email || !/^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$/.test(email)) return showError('Please enter a valid email address.');
+    if (!Number.isInteger(bid) || bid <= 0) return showError('Please enter your bid in whole pounds.');
+    if (bid < current.min) return showError(`The minimum bid for this item is £${current.min.toLocaleString('en-GB')}.`);
 
-    const btn = document.getElementById('gearBidSubmit');
-    btn.innerHTML = 'Submitting...';
+    btn.innerHTML = 'Submitting…';
     btn.disabled = true;
 
     try {
-      await fetch('https://formspree.io/f/mgodpjgk', {
+      const r = await fetch('/api/auction/bid', {
         method: 'POST',
-        body: fd,
-        headers: { 'Accept': 'application/json' }
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          item: current.id,
+          company_name: company,
+          contact_email: email,
+          bid_amount: bid,
+          website: (fd.get('website') || '').toString(),
+        }),
       });
-      
-      btn.innerHTML = '✓ Bid Recorded';
-      btn.style.background = 'var(--muted)'; 
-      
-      setTimeout(() => {
-        close();
-        btn.innerHTML = 'Submit Sealed Bid';
-        btn.style.background = '';
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        const msg = ({
+          closed:            'Bidding for this item has closed.',
+          bad_amount:        `The minimum bid for this item is £${Number(data.min || current.min).toLocaleString('en-GB')}.`,
+          bad_email:         'Please enter a valid email address.',
+          bad_company:       'Please enter your company name.',
+          too_many:          'Too many attempts. Please wait a while and try again.',
+          busy:              'Bidding is very busy right now. Please try again tomorrow or email contact@teatrade.co.uk.',
+          email_failed:      "We couldn't send your confirmation email. Please check the address and try again.",
+          email_unavailable: 'Bidding is temporarily unavailable. Please email contact@teatrade.co.uk.',
+        })[data.error] || 'Something went wrong. Please try again, or email contact@teatrade.co.uk.';
         btn.disabled = false;
-      }, 2500);
-    } catch (error) {
-      errorEl.textContent = 'Network error — please try again.';
-      errorEl.hidden = false;
-      btn.innerHTML = 'Submit Sealed Bid';
+        btn.innerHTML = 'Submit Sealed Bid';
+        return showError(msg);
+      }
+
+      form.hidden = true;
+      noteEl.textContent = '';
+      const lead = document.createElement('strong');
+      lead.textContent = 'Check your email to confirm your bid.';
+      noteEl.append(lead, ` We've sent a confirmation link to ${email}. Your bid on ${current.name} only counts once you confirm it, and bidding closes on 28 February 2027.`);
+      noteEl.hidden = false;
+    } catch (_) {
       btn.disabled = false;
+      btn.innerHTML = 'Submit Sealed Bid';
+      showError('Network error. Please check your connection and try again.');
     }
   });
+
+  // Live card status: open / closed / sponsored. Never shows any bid.
+  fetch('/api/auction').then(r => r.ok ? r.json() : null).then(status => {
+    if (!status || !Array.isArray(status.items)) return;
+    status.items.forEach(item => {
+      const card = document.querySelector(`.gear-card[data-id="${item.id}"]`);
+      if (!card) return;
+      card.dataset.state = item.status;
+      const pulse = card.querySelector('.gear-pulse');
+      const cta   = card.querySelector('.gear-bid');
+      if (item.status === 'open') return;
+      card.classList.add('is-closed');
+      if (pulse) {
+        const dot = pulse.querySelector('.gear-pulse__dot');
+        pulse.textContent = '';
+        if (dot) pulse.append(dot);
+        pulse.append(item.status === 'paid' && item.sponsor ? ` Sponsored by ${item.sponsor}` : ' Bidding closed');
+      }
+      if (cta) cta.textContent = item.status === 'paid' ? 'Sponsored' : 'Bidding closed';
+    });
+  }).catch(() => { /* cards simply stay open */ });
 }
 
 /* ================================================================

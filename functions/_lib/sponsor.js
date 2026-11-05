@@ -111,6 +111,7 @@ export function ensureShape(data) {
   data.general_pending   = data.general_pending   || [];
   data.general_donations = data.general_donations || [];
   data.orphan_donations  = data.orphan_donations  || [];
+  data.gear_payments     = data.gear_payments     || [];
   data.raised_total      = data.raised_total      || 0;
   data.raised_goal       = data.raised_goal       || 19000;
   return data;
@@ -127,8 +128,21 @@ export function parseLockCode(code) {
   return pixel >= 1 && pixel <= MILE_COUNT ? pixel : null;
 }
 
+// Gear auction winners pay with a G{item}-XXXX code (see auction.js).
+export function parseGearCode(code) {
+  const m = /^G(\d{1,2})-[A-Z0-9]{4}$/i.exec(String(code || "").trim());
+  return m ? parseInt(m[1], 10) : null;
+}
+
+export async function hashIp(request) {
+  const ip = request.headers.get("cf-connecting-ip");
+  if (!ip) return null;
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("teatrade-run:" + ip));
+  return Array.from(new Uint8Array(buf).slice(0, 8), b => b.toString(16).padStart(2, "0")).join("");
+}
+
 function isOurCode(code) {
-  return parseLockCode(code) !== null || /^g_[0-9a-f]+$/i.test(String(code || "").trim());
+  return parseLockCode(code) !== null || parseGearCode(code) !== null || /^g_[0-9a-f]+$/i.test(String(code || "").trim());
 }
 
 // Does this GiveWheel donation belong to this pending claim?
@@ -217,9 +231,11 @@ function upgradeManualEntry(data, pixel, gwId, now) {
 // anything changed, the outcome per newly seen donation, and the donor emails
 // to send. Emails are returned separately so they can't leak into responses.
 export function reconcileAll(data, donations, now) {
+  data.gear_payments = data.gear_payments || [];
   const handled = new Set([
     ...data.sponsorships.map(s => String(s.gw_id || "")),
     ...data.general_donations.map(g => String(g.gw_id || "")),
+    ...data.gear_payments.map(g => String(g.gw_id || "")),
   ].filter(Boolean));
   const orphanIds = new Set(data.orphan_donations.map(o => String(o.gw_id)));
 
@@ -280,6 +296,15 @@ function notifyFor(p, d, gwId) {
 }
 
 function attribute(data, d, gwId, now) {
+  // 0. A gear auction payment: recorded here, applied to its offer by auction.js.
+  if (parseGearCode(d.code) !== null) {
+    data.gear_payments.push({
+      gw_id: gwId, code: String(d.code).trim().toUpperCase(), amount: d.amount,
+      name: cleanText(d.name, 80), ts: now, applied: false,
+    });
+    return { kind: "gear_payment" };
+  }
+
   // 1. A mile claim.
   const pIdx = data.pending.findIndex(p => matchesPending(p, d, now));
   if (pIdx >= 0) {

@@ -151,3 +151,57 @@ export async function notifyAll(env, notifications) {
     await notifyDonor(env, notifications[i]);
   }
 }
+
+// ---- generic sending + layout (used by the gear auction emails) -----------
+
+export { sleep };
+
+// Sends one email. Resolves true on success; failures are logged, never thrown.
+export async function sendEmail(env, { to, subject, html, text, idempotencyKey }) {
+  if (!env.RESEND_API_KEY || !to) return false;
+  try {
+    const payload = {
+      from: env.RESEND_FROM || DEFAULT_FROM,
+      reply_to: env.RESEND_REPLY_TO || DEFAULT_REPLY,
+      to: [to], subject, html, text,
+    };
+    const r = await resend(env, "/emails", { body: payload, idempotencyKey });
+    if (!r.ok) console.error("resend_send_failed", r.status, (await r.text()).slice(0, 200));
+    return r.ok;
+  } catch (e) {
+    console.error("resend_send_error", String(e && e.message || e));
+    return false;
+  }
+}
+
+export const escapeHtml = esc;
+
+// One consistent layout. Signed "Run TeaTrade" (never a person). HTML is pure
+// ASCII so no mail client can garble it.
+export function renderEmail({ eyebrow = "Run TeaTrade", headline, paragraphs = [], facts = [], button, closing = "Thank you for supporting the run.", footer = "You're receiving this because of your bid at run.teatrade.co.uk. Just reply to this email if you have a question." }) {
+  const text = [
+    headline, "",
+    ...paragraphs.flatMap(p => [p, ""]),
+    ...(facts.length ? [...facts.map(([k, v]) => `${k}: ${v}`), ""] : []),
+    ...(button ? [`${button.label}: ${button.url}`, ""] : []),
+    closing, SIGN_OFF, "", footer,
+  ].join("\n");
+
+  const factRows = facts.map(([k, v]) =>
+    `<tr><td style="padding:4px 14px 4px 0;color:#5f6368;font-size:14px;white-space:nowrap;">${esc(k)}</td><td style="padding:4px 0;font-size:14px;font-weight:600;">${esc(v)}</td></tr>`).join("");
+
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#f6f6f6;font-family:Roboto,Arial,sans-serif;color:#202124;">
+<div style="max-width:520px;margin:0 auto;padding:24px 16px;">
+  <div style="background:#ffffff;border-radius:14px;padding:28px 26px;border:1px solid #e6e6e6;">
+    <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#f56600;font-weight:600;">${esc(eyebrow)}</div>
+    <h1 style="font-size:24px;line-height:1.25;margin:8px 0 14px;">${esc(headline)}</h1>
+    ${paragraphs.map(p => `<p style="font-size:15px;line-height:1.55;margin:0 0 14px;">${esc(p)}</p>`).join("\n    ")}
+    ${facts.length ? `<table role="presentation" style="border-collapse:collapse;margin:0 0 18px;background:#f8f8f8;border-radius:10px;padding:8px 14px;width:100%;">${factRows}</table>` : ""}
+    ${button ? `<p style="margin:0 0 20px;"><a href="${esc(button.url)}" style="display:inline-block;background:#f56600;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:999px;font-size:15px;">${esc(button.label)}</a></p>` : ""}
+    <p style="font-size:15px;margin:0;">${esc(closing)}<br>${SIGN_OFF}</p>
+  </div>
+  <p style="font-size:12px;line-height:1.5;color:#8a8d91;margin:14px 6px 0;">${esc(footer)}</p>
+</div></body></html>`.replace(/[^\x00-\x7F]/gu, c => `&#${c.codePointAt(0)};`);
+
+  return { html, text };
+}

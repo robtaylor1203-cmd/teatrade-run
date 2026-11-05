@@ -81,6 +81,12 @@
     </section>
 
     <section>
+      <h2>Gear auction <span class="badge" id="auction-badge">0</span> <button class="secondary" id="auction-csv" style="margin-left:auto">Export CSV</button></h2>
+      <p style="color:#666;margin:0 0 12px" id="auction-intro">Sealed bids, confirmed by email. Bidders are never shown rank or other bids.</p>
+      <div id="auction"></div>
+    </section>
+
+    <section>
       <h2>Diagnostics</h2>
       <pre id="diag" style="background:#f6f6f6;padding:10px;border-radius:4px;overflow:auto;font-size:12px;margin:0"></pre>
     </section>
@@ -141,6 +147,7 @@ async function load() {
     const r = await fetch('/api/sponsorships', { cache: 'no-store', headers: { 'x-admin-secret': SECRET } });
     DATA = await r.json();
     render();
+    loadAuction();
   } catch (e) { toast('Failed to load data: ' + e.message, true); }
 }
 
@@ -294,6 +301,77 @@ async function postAdmin(body, successMsg) {
 
 function escapeHtml(s) { return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function escapeAttr(s) { return escapeHtml(s); }
+
+// ---- Gear auction -------------------------------------------------------
+let AUCTION = null;
+const fmtWhen = ms => ms ? new Date(ms).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/London' }) : '';
+
+async function loadAuction() {
+  try {
+    const r = await fetch('/api/admin/auction', { cache: 'no-store', headers: { 'x-admin-secret': SECRET } });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    AUCTION = await r.json();
+    renderAuction();
+  } catch (e) { $('#auction').innerHTML = '<div class="empty">Could not load the auction (' + escapeHtml(e.message) + ').</div>'; }
+}
+
+function auctionStatus(st) {
+  if (!st) return '<span class="badge">open</span>';
+  const cls = { offered: 'warn', paid: 'ok', lapsed: 'warn', nobids: '' }[st.status] || '';
+  const extra = st.status === 'offered' ? ` pay by ${escapeHtml(fmtWhen(st.deadline))}` : st.status === 'paid' ? ` ${escapeHtml(fmtWhen(st.paidAt))}` : '';
+  return `<span class="badge ${cls}">${escapeHtml(st.status)}</span>${extra}`;
+}
+
+function renderAuction() {
+  if (!AUCTION) return;
+  const total = AUCTION.items.reduce((n, i) => n + i.bids.length, 0);
+  $('#auction-badge').textContent = total;
+  $('#auction-intro').textContent = AUCTION.closed
+    ? `Closed. Winners were emailed and must pay by ${fmtWhen(AUCTION.pay_by)}. Re-offer an item to another bidder with the button on that bid.`
+    : `Open until ${fmtWhen(AUCTION.closes)}. Winners are decided and emailed automatically after the close.`;
+
+  $('#auction').innerHTML = AUCTION.items.map(i => {
+    const rows = i.bids.map((b, n) => `
+      <tr>
+        <td>${n + 1}</td>
+        <td>${escapeHtml(b.company)}</td>
+        <td>${escapeHtml(b.email)}</td>
+        <td><strong>£${Number(b.amount).toLocaleString('en-GB')}</strong></td>
+        <td>${escapeHtml(fmtWhen(b.confirmedAt))}</td>
+        <td>${AUCTION.closed && i.state?.status !== 'paid' ? `<button class="secondary" data-offer="${escapeAttr(i.id)}" data-key="${escapeAttr(b.key)}">Offer to this bidder</button>` : ''}</td>
+      </tr>`).join('');
+    return `
+      <h3 style="margin:16px 0 6px;font-size:14px">${escapeHtml(i.name)} <span style="color:#888;font-weight:400">min £${i.min}</span> &nbsp;${auctionStatus(i.state)}</h3>
+      ${i.bids.length ? `<table><thead><tr><th>#</th><th>Company</th><th>Email</th><th>Bid</th><th>Confirmed</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">No confirmed bids.</div>'}`;
+  }).join('');
+
+  document.querySelectorAll('button[data-offer]').forEach(btn => {
+    btn.onclick = async () => {
+      const days = prompt('Offer this item to this bidder. How many days to pay (1-14)?', '3');
+      if (days === null) return;
+      const r = await fetch('/api/admin/auction', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-admin-secret': SECRET },
+        body: JSON.stringify({ action: 'offer', item: btn.dataset.offer, bid_key: btn.dataset.key, days: Number(days) }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.error) { toast(j.error || `HTTP ${r.status}`, true); return; }
+      toast(`Offered to ${j.offer.company}; they have been emailed.`);
+      loadAuction();
+    };
+  });
+}
+
+$('#auction-csv').onclick = () => {
+  if (!AUCTION) return;
+  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const lines = [['item', 'rank', 'company', 'email', 'bid_gbp', 'confirmed_at', 'status'].map(q).join(',')];
+  AUCTION.items.forEach(i => i.bids.forEach((b, n) => lines.push([i.name, n + 1, b.company, b.email, b.amount, new Date(b.confirmedAt).toISOString(), i.state?.status || 'open'].map(q).join(','))));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
+  a.download = 'gear-auction-bids.csv';
+  a.click();
+};
 
 // Coerce any CSS colour string to a 7-char #rrggbb for <input type=color>.
 function toHex(c) {

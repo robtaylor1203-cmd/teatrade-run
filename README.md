@@ -44,6 +44,36 @@ map + grid update within ~45s: orange individual, black business, gold premium
   held privately on the unpaid claim only and removed once the confirmation is sent. Email is
   best-effort: with no `RESEND_API_KEY`, or if Resend is down, donations still confirm.
 
+### Gear auction (sealed-bid, in-house)
+
+Replaces the old Formspree form. Dates and items live in
+[`functions/_lib/auction-config.js`](functions/_lib/auction-config.js): bidding closes **28 February 2027,
+23:59 GMT**; winners pay and send logos by **7 March 2027, 23:59 GMT**. If you change a date, also change
+the page copy in the `#gear` section of `index.html` and the bid modal.
+
+```
+visitor bids (company, email, amount >= item minimum)  ->  POST /api/auction/bid
+   emailed a "confirm your bid" link (a bid only counts once confirmed; the button is a POST so
+   mail scanners that open links can't confirm it)  ->  receipt email with item + amount
+close + 2 min  ->  highest confirmed bid per item wins (ties: earliest confirmation)
+   winner emailed a personal GiveWheel link (amount locked, code G{item}-XXXX)
+   everyone else gets a courteous result email; organiser gets a summary at contact@
+winner pays on GiveWheel  ->  next poll matches the code  ->  card shows "Sponsored by X",
+   thank-you email, organiser notified.  Reminders 3 days and 1 day before the deadline;
+   an unpaid offer lapses after 7 March and the organiser is emailed.
+```
+
+- **Sealed:** nobody is ever told their rank, whether they lead, or that they were outbid. Public
+  `/api/auction` returns only open / closed / sponsored per card, never bids.
+- **Admin:** `/admin/` > "Gear auction" lists every confirmed bid, shows results, offers an item to
+  another bidder (e.g. after a lapse) and exports CSV. Needs `ADMIN_SECRET`.
+- **Storage:** the existing KV namespace (one key per bid, so no lost updates); nothing new to set up.
+- **Abuse limits** protect the Resend quota shared with the main site: 8 submissions/hour per network
+  address, 5/day per email address, 60 verification emails/day overall. Resend's free plan allows 100
+  emails/day for the whole account, so consider Pro for launch week.
+- Winners reply to their email with logo files (vector PDF/SVG/AI or high-res PNG); replies go to
+  `contact@teatrade.co.uk`.
+
 ### Cloudflare Pages settings
 
 KV binding: `SPONSORSHIPS_KV`.

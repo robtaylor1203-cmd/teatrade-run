@@ -19,6 +19,12 @@ const { onRequestGet:  logoGet }     = await load("api/logo/[id].js");
 const { onRequestPost: webhook }     = await load("api/givewheel-webhook.js");
 const { onRequestPost: adminAssign } = await load("api/admin/assign-pixel.js");
 const { milePrice, mileTier }        = await load("_lib/sponsor.js");
+const { onRequestGet: auctionStatus }                       = await load("api/auction.js");
+const { onRequestPost: auctionBid }                         = await load("api/auction/bid.js");
+const { onRequestGet: confirmGet, onRequestPost: confirmPost } = await load("api/auction/confirm.js");
+const { onRequestGet: adminAuctionGet, onRequestPost: adminAuctionPost } = await load("api/admin/auction.js");
+const { tick: auctionTick, listBids } = await load("_lib/auction.js");
+const { ITEMS, AUCTION_CLOSES_MS, PAY_BY_MS } = await load("_lib/auction-config.js");
 process.on("exit", () => rmSync(tmp, { recursive: true, force: true }));
 
 let pass = 0, fail = 0;
@@ -35,7 +41,13 @@ class KV {
     if (!e) return null;
     return opts?.type === "json" ? JSON.parse(e.v) : e.v;
   }
-  async put(k, v, opts) { this.m.set(k, { v: String(v), ttl: opts?.expirationTtl ?? null }); }
+  async put(k, v, opts) { this.m.set(k, { v: String(v), ttl: opts?.expirationTtl ?? null, meta: opts?.metadata ?? null }); }
+  async delete(k) { this.m.delete(k); }
+  async list({ prefix = "", cursor, limit = 1000 } = {}) {
+    const names = [...this.m.keys()].filter(k => k.startsWith(prefix)).sort();
+    const keys = names.map(name => ({ name, metadata: this.m.get(name).meta ?? undefined }));
+    return { keys, list_complete: true };
+  }
   ttl(k) { return this.m.get(k)?.ttl; }
 }
 
@@ -404,6 +416,201 @@ await doPoll(); await flush();
 const who = resendCalls.map(c => c.body?.to?.[0] || c.body?.email || decodeURIComponent((c.path.match(/contacts\/([^/]+)/) || [])[1] || ""));
 ok(who.includes("a1@example.com") && who.includes("b2@example.com") && who.lastIndexOf("a1@example.com") < who.indexOf("b2@example.com"), "burst of donations is handled one donor at a time (never a flood of parallel API calls)", who);
 
+console.log("\n17. Gear auction: sealed, in-house, with a controllable clock");
+const realNow = Date.now;
+const setNow = (ms) => { Date.now = () => ms; };
+const DAY = 86400000;
+setNow(Date.parse("2027-02-10T12:00:00Z"));
+const auctionStart = allEmails.length;
+
+const doBid = async (body, ip = "9.9.9.9") => {
+  setNow(Date.now() + 1500);
+  const r = await auctionBid({ env, request: new Request("https://run.teatrade.co.uk/api/auction/bid", { method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": ip }, body: JSON.stringify(body) }) });
+  return { status: r.status, body: await r.json() };
+};
+const tokenFrom = (e) => /confirm\?t=([A-Z0-9]{24})/.exec(e.body.text)[1];
+const getConfirm = (t) => confirmGet({ env, request: new Request(`https://run.teatrade.co.uk/api/auction/confirm?t=${t}`) });
+const postConfirm = (t) => { setNow(Date.now() + 1500); const fd = new FormData(); fd.set("t", t); return confirmPost(makeCtx(new Request("https://run.teatrade.co.uk/api/auction/confirm", { method: "POST", body: fd }))); };
+const subCount = () => [...kv.m.keys()].filter(k => k.startsWith("sub:")).length;
+let ipN = 0; const ip = () => `9.8.${Math.floor(ipN / 250)}.${ipN++ % 250}`;
+const placeAndConfirm = async (item, amount, company, email) => {
+  reset();
+  const r = await doBid({ item, bid_amount: amount, company_name: company, contact_email: email }, ip());
+  const t = tokenFrom(emails()[0]);
+  await postConfirm(t); await flush();
+  return { r, t };
+};
+
+let bb = await doBid({ item: "nope", bid_amount: 500, company_name: "X", contact_email: "x@x.com" }, ip());
+ok(bb.status === 400 && bb.body.error === "bad_item", "unknown item refused", bb);
+bb = await doBid({ item: "front-chest", bid_amount: 499, company_name: "X", contact_email: "x@x.com" }, ip());
+ok(bb.status === 400 && bb.body.error === "bad_amount" && bb.body.min === 500, "bid below the item's minimum refused (minimum returned)", bb);
+bb = await doBid({ item: "front-chest", bid_amount: 500.5, company_name: "X", contact_email: "x@x.com" }, ip());
+ok(bb.status === 400 && bb.body.error === "bad_amount", "fractional pounds refused");
+bb = await doBid({ item: "front-chest", bid_amount: 60000, company_name: "X", contact_email: "x@x.com" }, ip());
+ok(bb.status === 400 && bb.body.error === "bad_amount", "absurd amount refused");
+bb = await doBid({ item: "front-chest", bid_amount: 600, company_name: "X", contact_email: "nope" }, ip());
+ok(bb.status === 400 && bb.body.error === "bad_email", "bad email refused");
+bb = await doBid({ item: "front-chest", bid_amount: 600, company_name: "   ", contact_email: "x@x.com" }, ip());
+ok(bb.status === 400 && bb.body.error === "bad_company", "blank company refused");
+let n0 = subCount(); reset();
+bb = await doBid({ item: "front-chest", bid_amount: 600, company_name: "Bot", contact_email: "bot@x.com", website: "http://spam" }, ip());
+ok(bb.status === 200 && subCount() === n0 && emails().length === 0, "honeypot: bots get a fake success but nothing is stored or emailed");
+const savedKey2 = env.RESEND_API_KEY; delete env.RESEND_API_KEY;
+bb = await doBid({ item: "front-chest", bid_amount: 600, company_name: "X", contact_email: "x@x.com" }, ip());
+ok(bb.status === 503 && bb.body.error === "email_unavailable", "can't take bids if verification emails can't be sent");
+env.RESEND_API_KEY = savedKey2;
+
+reset();
+bb = await doBid({ item: "front-chest", bid_amount: 600, company_name: "Acme Tea Ltd", contact_email: "A@Acme.com" }, ip());
+ok(bb.status === 200 && bb.body.ok, "valid bid accepted", bb);
+let ve = emails()[0];
+ok(ve && ve.body.to[0] === "a@acme.com" && /Confirm your bid on Front Chest/.test(ve.body.subject), "verification email goes to the bidder", ve && ve.body.subject);
+ok(ve.body.text.includes("Front Chest (T-Shirt)") && ve.body.text.includes("\u00a3600") && ve.body.text.includes("Acme Tea Ltd") && ve.body.text.includes("28 February 2027 at 23:59 GMT"), "it states item, amount, company and the closing time");
+const tok1 = tokenFrom(ve);
+ok((await listBids(env, "front-chest")).length === 0, "an unconfirmed bid does not count");
+const g1 = await getConfirm(tok1); const g1t = await g1.text();
+ok(g1.status === 200 && g1t.includes("Confirm my bid") && g1t.includes("Front Chest") && g1t.includes("&#163;600") && /^[\x00-\x7F]*$/.test(g1t), "confirm page shows the bid and a button (ASCII-safe)");
+ok((await listBids(env, "front-chest")).length === 0, "merely opening the link (as a mail scanner would) does NOT confirm the bid");
+const p1 = await postConfirm(tok1); await flush();
+ok(p1.status === 200 && (await p1.text()).includes("Your bid is confirmed"), "pressing the button confirms it");
+const rc = emails().find(e => /Your bid is confirmed: Front Chest/.test(e.body.subject));
+ok(rc && rc.body.to[0] === "a@acme.com" && rc.body.text.includes("\u00a3600") && rc.body.text.includes("Front Chest (T-Shirt)") && rc.body.text.includes("7 March 2027"), "receipt email gives item, amount and what happens next");
+let fc = await listBids(env, "front-chest");
+ok(fc.length === 1 && fc[0].amount === 600, "bid is stored", fc);
+reset(); const p1b = await postConfirm(tok1); await flush();
+ok((await p1b.text()).includes("Already confirmed") && emails().length === 0, "confirming twice is harmless and sends no second receipt");
+
+reset(); resendMode = "down"; const subsN = subCount();
+bb = await doBid({ item: "front-chest", bid_amount: 700, company_name: "Down Co", contact_email: "d@down.com" }, ip());
+resendMode = "ok";
+ok(bb.status === 502 && bb.body.error === "email_failed" && subCount() === subsN, "if the email can't be sent the bidder is told and nothing is left behind", bb);
+
+reset();
+bb = await doBid({ item: "front-chest", bid_amount: 650, company_name: "Acme Tea Ltd", contact_email: "a@acme.com" }, ip());
+const tok2 = tokenFrom(emails()[0]);
+ok((await listBids(env, "front-chest"))[0].amount === 600, "a revision doesn't replace the confirmed bid until it is confirmed too");
+await postConfirm(tok2); await flush();
+fc = await listBids(env, "front-chest");
+ok(fc.length === 1 && fc[0].amount === 650, "confirming the revision updates the same bid (one bid per bidder per item)", fc);
+const oldLink = await postConfirm(tok1); const oldTxt = await oldLink.text();
+ok(oldTxt.includes("newer bid") && (await listBids(env, "front-chest"))[0].amount === 650, "an older link can't overwrite a newer bid");
+
+await placeAndConfirm("front-chest", 620, "Brew Co", "b@brew.com");
+await placeAndConfirm("front-chest", 650, "C Tea", "c@c.com");
+fc = await listBids(env, "front-chest");
+ok(fc.map(b => b.company).join("|") === "Acme Tea Ltd|C Tea|Brew Co", "ranking: highest first, equal bids go to the earliest confirmation", fc.map(b => b.company + b.amount));
+await placeAndConfirm("upper-back", 400, "Acme Tea Ltd", "a@acme.com");
+await placeAndConfirm("upper-back", 450, "Brew Co", "b@brew.com");
+await placeAndConfirm("right-sleeve", 300, "E Co", "e@e.com");
+await placeAndConfirm("right-sleeve", 250, "F Co", "f@f.com");
+reset();
+const dBid = await doBid({ item: "cap", bid_amount: 200, company_name: "D Ltd", contact_email: "d@d.com" }, ip());
+const tokD = tokenFrom(emails()[0]);
+const pubOpen = await (await auctionStatus(makeCtx(new Request("https://run.teatrade.co.uk/api/auction")))).json();
+ok(pubOpen.open === true && pubOpen.items.length === 9 && pubOpen.items.every(i => i.status === "open") && !/@|acme|brew/i.test(JSON.stringify(pubOpen)), "public status: nine open items, no bids or bidders exposed");
+
+setNow(AUCTION_CLOSES_MS - 12 * 3600e3);
+reset(); await auctionTick(env, Date.now()); await flush();
+ok(emails().length === 1 && emails()[0].body.to[0] === "d@d.com" && /Last chance to confirm your bid on Running Cap/.test(emails()[0].body.subject), "in the last 24h only the unconfirmed bidder gets a reminder (once)", emails().map(e => e.body.to[0] + " " + e.body.subject));
+reset(); await auctionTick(env, Date.now());
+ok(emails().length === 0, "the reminder is not repeated");
+
+const emailRun = []; for (let i = 0; i < 6; i++) emailRun.push(await doBid({ item: "cap", bid_amount: 200, company_name: "Spam", contact_email: "spam@x.com" }, ip()));
+ok(emailRun.slice(0, 5).every(r => r.status === 200) && emailRun[5].status === 429 && emailRun[5].body.error === "too_many", "one email address can't be used to flood verification emails");
+const ipRun = []; for (let i = 0; i < 9; i++) ipRun.push(await doBid({ item: "cap", bid_amount: 200, company_name: "Spam", contact_email: `ip${i}@x.com` }, "9.7.7.7"));
+ok(ipRun.slice(0, 8).every(r => r.status === 200) && ipRun[8].status === 429, "one network address is rate-limited");
+await kv.put("rl:all:2027-02-28", "60");
+bb = await doBid({ item: "cap", bid_amount: 200, company_name: "Late", contact_email: "late@x.com" }, ip());
+ok(bb.status === 429 && bb.body.error === "busy", "a daily cap protects the shared Resend quota");
+await kv.put("rl:all:2027-02-28", "0");
+
+setNow(AUCTION_CLOSES_MS + 1000);
+bb = await doBid({ item: "cap", bid_amount: 200, company_name: "Late", contact_email: "late@x.com" }, ip());
+ok(bb.status === 403 && bb.body.error === "closed", "no bids after the close", bb);
+const lateTxt = await (await postConfirm(tokD)).text();
+ok(lateTxt.includes("Bidding has closed") && (await listBids(env, "cap")).length === 0, "an unconfirmed bid can't be confirmed after close");
+
+reset(); await auctionTick(env, AUCTION_CLOSES_MS + 60e3);
+ok(emails().length === 0 && !(JSON.parse(await kv.get("auction:state")).closedAt), "nothing is decided during the short grace period");
+
+setNow(AUCTION_CLOSES_MS + 3 * 60e3); reset();
+await auctionTick(env, Date.now()); await flush();
+const st = JSON.parse(await kv.get("auction:state"));
+ok(st.closedAt && st.items["front-chest"].company === "Acme Tea Ltd" && st.items["front-chest"].amount === 650, "winner = highest bid; a tie goes to the earliest confirmed", st.items["front-chest"]);
+ok(st.items["upper-back"].company === "Brew Co" && st.items["upper-back"].amount === 450, "second item awarded");
+ok(st.items["right-sleeve"].company === "E Co" && st.items["right-sleeve"].amount === 300, "third item awarded");
+ok(st.items["cap"].status === "nobids" && st.items["left-sleeve"].status === "nobids", "unconfirmed or missing bids mean no winner");
+const wonEs = emails().filter(e => /^You won /.test(e.body.subject));
+const lostEs = emails().filter(e => /^Result of your bid/.test(e.body.subject));
+ok(wonEs.length === 3 && lostEs.length === 4, "3 winner and 4 not-successful emails", { won: wonEs.length, lost: lostEs.length });
+const wAcme = wonEs.find(e => e.body.to[0] === "a@acme.com");
+const payLink = new URL(/donation: (https:\/\/\S+)/.exec(wAcme.body.text)[1]);
+ok(payLink.searchParams.get("donation") === "650" && payLink.searchParams.get("lock_amount") === "true" && /^G1-[A-Z0-9]{4}$/.test(payLink.searchParams.get("d_question_1")), "winner gets a personal GiveWheel link: amount locked, gear lock code", payLink.search);
+ok(wAcme.body.text.includes("7 March 2027 at 23:59 GMT") && /vector/.test(wAcme.body.text) && wAcme.body.text.includes("2 April 2027"), "winner email states the 7 March deadline and logo requirements for the 2 April run");
+const lostBrew = lostEs.find(e => e.body.to[0] === "b@brew.com");
+ok(lostBrew.body.text.includes("\u00a3620") && !lostBrew.body.text.includes("\u00a3650"), "not-successful email shows only the bidder's own bid, never another's");
+ok(emails().some(e => e.body.to[0] === "contact@teatrade.co.uk" && /Gear auction closed/.test(e.body.subject)), "organiser gets a results summary");
+reset(); await auctionTick(env, Date.now());
+ok(emails().length === 0, "closing is idempotent: nothing is re-sent");
+const pubClosed = await (await auctionStatus(makeCtx(new Request("https://run.teatrade.co.uk/api/auction")))).json();
+ok(pubClosed.open === false && pubClosed.items.every(i => i.status === "closed") && !/@|acme|brew|650|450/i.test(JSON.stringify(pubClosed)), "after close every card reads closed; still no bids exposed");
+
+const codeAcme = payLink.searchParams.get("d_question_1");
+reset(); gwPay({ amount: 650, code: codeAcme, name: "Acme" });
+pub = await doPoll(true); await flush();
+ok(emails().some(e => e.body.to[0] === "a@acme.com" && /^Payment received: Front Chest/.test(e.body.subject)), "winner is thanked when payment lands");
+ok(emails().some(e => e.body.to[0] === "contact@teatrade.co.uk" && /^Gear paid: Front Chest/.test(e.body.subject)), "organiser is told too");
+ok(!pub.orphan_donations.some(o => o.code === codeAcme), "gear payment is recognised, not orphaned");
+let ps = await (await auctionStatus(makeCtx(new Request("https://run.teatrade.co.uk/api/auction?x=1")))).json();
+ok(ps.items.find(i => i.id === "front-chest").status === "paid" && ps.items.find(i => i.id === "front-chest").sponsor === "Acme Tea Ltd", "the card now shows the sponsor");
+const codeBrew = st.items["upper-back"].code;
+reset(); gwPay({ amount: 100, code: codeBrew, name: "Brew" }); gwPay({ amount: 150, code: "G9-ZZZZ", name: "Nobody" });
+pub = await doPoll(true); await flush();
+ok(pub.orphan_donations.some(o => o.code === codeBrew && o.reason === "gear_underpaid") && pub.orphan_donations.some(o => o.code === "G9-ZZZZ" && o.reason === "gear_no_offer"), "underpayments and unknown gear codes are flagged for the admin, money still counted");
+ok(JSON.parse(await kv.get("auction:state")).items["upper-back"].status === "offered", "an underpayment does not mark the item paid");
+reset(); gwPay({ amount: 450, code: codeBrew, name: "Brew" });
+await doPoll(true); await flush();
+ok(JSON.parse(await kv.get("auction:state")).items["upper-back"].status === "paid", "full payment marks it paid");
+
+setNow(PAY_BY_MS - 2.5 * DAY); reset(); await auctionTick(env, Date.now());
+ok(emails().length === 1 && emails()[0].body.to[0] === "e@e.com" && /^Reminder/.test(emails()[0].body.subject), "3-day reminder goes only to the unpaid winner", emails().map(e => e.body.to[0] + " " + e.body.subject));
+reset(); await auctionTick(env, Date.now());
+ok(emails().length === 0, "not repeated");
+setNow(PAY_BY_MS - 20 * 3600e3); reset(); await auctionTick(env, Date.now());
+ok(emails().length === 1 && /Final reminder/.test(emails()[0].body.text), "final reminder the day before");
+setNow(PAY_BY_MS + 60e3); reset(); await auctionTick(env, Date.now());
+ok(emails().some(e => e.body.to[0] === "contact@teatrade.co.uk" && /offer lapsed/.test(e.body.subject)) && JSON.parse(await kv.get("auction:state")).items["right-sleeve"].status === "lapsed", "unpaid offer lapses after 7 March and the organiser is told");
+
+const noAuth = await adminAuctionGet({ env, request: new Request("https://run.teatrade.co.uk/api/admin/auction") });
+ok(noAuth.status === 403, "admin auction view needs the secret");
+const adminHdr = { "x-admin-secret": "adm", "content-type": "application/json" };
+const ov = await (await adminAuctionGet({ env, request: new Request("https://run.teatrade.co.uk/api/admin/auction", { headers: adminHdr }) })).json();
+const rsItem = ov.items.find(i => i.id === "right-sleeve");
+ok(ov.closed && rsItem.bids.length === 2 && rsItem.state.status === "lapsed", "admin sees every confirmed bid and the lapsed offer", rsItem.bids);
+const fBid = rsItem.bids.find(b => b.company === "F Co");
+reset();
+let off = await adminAuctionPost({ env, request: new Request("https://run.teatrade.co.uk/api/admin/auction", { method: "POST", headers: adminHdr, body: JSON.stringify({ action: "offer", item: "right-sleeve", bid_key: fBid.key, days: 3 }) }) });
+const offJ = await off.json();
+ok(off.status === 200 && offJ.ok && offJ.offer.amount === 250 && offJ.offer.company === "F Co", "admin can offer the item to the next bidder", offJ);
+const offerEmail = emails().find(e => e.body.to[0] === "f@f.com" && /^You won Right Sleeve/.test(e.body.subject));
+ok(offerEmail && offerEmail.body.text.includes("March 2027"), "the new offer email carries its own deadline");
+reset(); gwPay({ amount: 250, code: offJ.offer.code, name: "F" });
+await doPoll(true); await flush();
+ps = await (await auctionStatus(makeCtx(new Request("https://run.teatrade.co.uk/api/auction?x=2")))).json();
+ok(ps.items.find(i => i.id === "right-sleeve").sponsor === "F Co", "payment on the new offer sponsors the item");
+off = await adminAuctionPost({ env, request: new Request("https://run.teatrade.co.uk/api/admin/auction", { method: "POST", headers: adminHdr, body: JSON.stringify({ action: "offer", item: "front-chest", bid_key: (ov.items.find(i => i.id === "front-chest").bids[0]).key }) }) });
+ok(off.status === 400 && (await off.json()).error === "already_paid", "a paid item can't be re-offered");
+
+const AE = allEmails.slice(auctionStart);
+ok(AE.length >= 25, "collected the auction emails to check", AE.length);
+ok(AE.every(e => e.from === "Run TeaTrade <run@teatrade.co.uk>" && e.reply_to === "contact@teatrade.co.uk"), "auction emails: from run@, replies to contact@");
+ok(AE.every(e => /\nRun TeaTrade\n/.test(e.text) && e.html.includes("<br>Run TeaTrade</p>")), "auction emails: signed exactly 'Run TeaTrade'");
+ok(AE.every(e => !/\bRob\b/i.test(e.text + e.html)), "auction emails: never a personal name");
+ok(AE.every(e => /^[\x00-\x7F]*$/.test(e.html) && /^[\x00-\x7F]*$/.test(e.subject)), "auction emails: ASCII-safe HTML and subjects");
+ok(AE.every(e => !/outbid|leading|\brank|top spot|in the lead/i.test(e.subject + " " + e.text)), "SEALED: no email ever mentions rank, leading or being outbid");
+ok(![...kv.m.keys()].some(k => k.includes("@")), "no raw email addresses in any storage key");
+Date.now = realNow;
+
 console.log(`\n==== ${pass} passed, ${fail} failed ====`);
 process.exit(fail ? 1 : 0);
-

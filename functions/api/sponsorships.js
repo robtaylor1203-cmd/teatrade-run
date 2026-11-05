@@ -26,6 +26,7 @@ import {
   PENDING_KEEP_MS,
 } from "../_lib/sponsor.js";
 import { notifyAll } from "../_lib/email.js";
+import { applyGearPayments } from "../_lib/auction.js";
 
 const TOKEN_KV_KEY  = "gw_token";
 const TOKEN_SKEW_MS = 5 * 60 * 1000;   // refresh a bit before real expiry
@@ -145,6 +146,7 @@ export async function onRequestGet(context) {
   let changed = false;
   let outcomes = [];
   let notifications = [];
+  let sendGearEmails = async () => {};
 
   // Forget claims we've held long enough (expired claims are kept for a while
   // so a late payment still gets its logo and message).
@@ -180,6 +182,14 @@ export async function onRequestGet(context) {
     }
   }
 
+  // Gear auction winners' payments (recorded by reconcileAll) go to their offers.
+  try {
+    const gear = await applyGearPayments(env, data, now);
+    if (gear.changed) { changed = true; sendGearEmails = gear.send; }
+  } catch (e) {
+    attempts.push({ what: "gear_payments", error: String(e && e.message || e) });
+  }
+
   let writeError = null;
   if (changed) {
     data.updated = new Date().toISOString();
@@ -190,6 +200,7 @@ export async function onRequestGet(context) {
   // Only email once the confirmation is saved; Resend de-duplicates on the
   // donation id if two overlapping polls both get this far.
   if (!writeError && notifications.length) context.waitUntil(notifyAll(env, notifications));
+  if (!writeError) context.waitUntil(sendGearEmails());
 
   // -- 3. Respond ---------------------------------------------------------
   const body = {
@@ -346,7 +357,7 @@ function listFromPayload(payload) {
 // Our lock codes look like M63-AB12 (mile) or g_1a2b3c4d5e (general). Prefer
 // the answer to question 1, but if the question order ever differs scan every
 // answer for something that looks like one of ours.
-const OUR_CODE = /^(?:M\d{1,3}-[A-Z0-9]{4}|g_[0-9a-f]{10})$/i;
+const OUR_CODE = /^(?:M\d{1,3}-[A-Z0-9]{4}|G\d{1,2}-[A-Z0-9]{4}|g_[0-9a-f]{10})$/i;
 function findLockCode(d) {
   const q1 = extractQuestion(d, 1);
   if (OUR_CODE.test(q1.trim())) return q1.trim();

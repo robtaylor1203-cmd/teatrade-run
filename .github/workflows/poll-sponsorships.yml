@@ -45,3 +45,10 @@ jobs:
           case "$HTTP" in
             5*|000) exit 1 ;;
           esac
+
+      - name: Nudge the gear auction
+        run: |
+          # Lets the auction close, send results and send reminders on time even
+          # when nobody is visiting the site. Public, read-only, returns no bids.
+          curl -sS -o /dev/null -w 'auction HTTP %{http_code}\n' --max-time 30 \
+            https://run.teatrade.co.uk/api/auction || true
