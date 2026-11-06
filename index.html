@@ -4273,35 +4273,51 @@ function sponsorCardHTML(mileNum, sponsor, availableTier) {
   return `<div class="${cardCls}">${logoBlock}<div class="sponsor-card__body">${body}</div></div>`;
 }
 
+/* One place decides what every mile looks like and says. The map pixels
+   and the sponsor grid both render from this, so they cannot disagree. */
+function mileStates() {
+  const sponsorByMile = {};
+  CONFIG.sponsoredPixels.forEach(s => sponsorByMile[s.pixel] = s);
+  const premiumSet  = new Set(CONFIG.premiumMiles  || []);
+  const featuredSet = new Set(CONFIG.featuredMiles || []);
+  const states = [];
+  for (let mile = 1; mile <= CONFIG.pixelCount; mile++) {
+    const sponsor = sponsorByMile[mile] || null;
+    const availableTier = sponsor ? null
+                        : premiumSet.has(mile)  ? 'premium'
+                        : featuredSet.has(mile) ? 'featured'
+                        : null;
+    states.push({
+      mile,
+      sponsor,
+      availableTier,
+      stateClass:  sponsor ? 'claimed' : availableTier ? availableTier + '-available' : '',
+      tierClasses: sponsor ? sponsorClasses(sponsor).trim().split(' ').filter(Boolean) : [],
+      cardHTML:    sponsorCardHTML(mile, sponsor, availableTier),
+    });
+  }
+  return states;
+}
+
+/* Sponsored miles can't be re-sponsored but open the preview so touch
+   users (no hover) can read the logo and message; available miles go
+   straight to the sponsor form. Shared by map pixels and grid cells. */
+function openMile(m) {
+  openMilePreviewModal(m.mile, m.sponsor, m.availableTier || 'standard');
+}
+
 /* Build the pixelated, sponsorable route blocks.
    Each pixel sits at a fractional position along the route
    and exposes a hover tooltip + click-to-sponsor flow. */
 function buildPixels() {
-  const sponsorByPixel = {};
-  CONFIG.sponsoredPixels.forEach(s => sponsorByPixel[s.pixel] = s);
-  const premiumSet  = new Set(CONFIG.premiumMiles  || []);
-  const featuredSet = new Set(CONFIG.featuredMiles || []);
-
-  for (let i = 1; i <= CONFIG.pixelCount; i++) {
-    const t = (i - 0.5) / CONFIG.pixelCount;
-    const ll = pointAlongRoute(t);
-    const sponsor = sponsorByPixel[i];
-    const availableTier = !sponsor && premiumSet.has(i)  ? 'premium'
-                        : !sponsor && featuredSet.has(i) ? 'featured'
-                        : null;
-
-    let cls = 'pixel';
-    if (sponsor) {
-      cls += ' pixel--claimed' + sponsorClasses(sponsor);
-    } else if (availableTier === 'premium') {
-      cls += ' pixel--premium-available';
-    } else if (availableTier === 'featured') {
-      cls += ' pixel--featured-available';
-    }
+  mileStates().forEach(m => {
+    const ll = pointAlongRoute((m.mile - 0.5) / CONFIG.pixelCount);
+    const cls = ['pixel', m.stateClass && 'pixel--' + m.stateClass, ...m.tierClasses]
+      .filter(Boolean).join(' ');
 
     const icon = L.divIcon({
       className: '',
-      html: `<div class="${cls}" data-pixel="${i}"></div>`,
+      html: `<div class="${cls}" data-pixel="${m.mile}"></div>`,
       iconSize: [12, 12],
       iconAnchor: [6, 6],
     });
@@ -4309,7 +4325,7 @@ function buildPixels() {
     const marker = L.marker(ll, { icon, riseOnHover: true }).addTo(leafletMap);
     pixelMarkers.push(marker);
 
-    marker.bindTooltip(sponsorCardHTML(i, sponsor, availableTier), {
+    marker.bindTooltip(m.cardHTML, {
       className: 'pixel-tip',
       direction: 'top',
       offset: [0, -6],
@@ -4317,15 +4333,8 @@ function buildPixels() {
       sticky: false,
     });
 
-    // Available miles open the sponsor form. Sponsored miles can't be
-    // re-sponsored, but tapping one opens the preview so touch users (who
-    // have no hover) can read the logo and message.
-    if (!sponsor) {
-      marker.on('click', () => openSponsorModal(i, availableTier || 'standard'));
-    } else {
-      marker.on('click', () => openMilePreviewModal(i, sponsor, null));
-    }
-  }
+    marker.on('click', () => openMile(m));
+  });
 }
 
 /* ================================================================
@@ -4467,34 +4476,28 @@ function updateMilesGridSize() {
    ================================================================ */
 function buildMilesGrid() {
   const grid = document.getElementById('milesGrid');
-  const map = {};
-  CONFIG.sponsoredPixels.forEach(s => map[s.pixel] = s);
-  const premiumSet  = new Set(CONFIG.premiumMiles  || []);
-  const featuredSet = new Set(CONFIG.featuredMiles || []);
+  const states = mileStates();
   let claimed = 0;
 
-  for (let i = 1; i <= 190; i++) {
+  for (const m of states) {
+    const i = m.mile;
+    const s = m.sponsor;
+    const availableTier = m.availableTier;
     const block = document.createElement('div');
     block.className = 'mile';
     block.dataset.mile = i;
     block.setAttribute('role', 'listitem');
     block.textContent = i;
 
-    const s = map[i];
-    const availableTier = !s && premiumSet.has(i)  ? 'premium'
-                        : !s && featuredSet.has(i) ? 'featured'
-                        : null;
+    if (m.stateClass) block.classList.add('mile--' + m.stateClass);
+    m.tierClasses.forEach(c => block.classList.add(c));
     if (s) {
       claimed++;
-      block.classList.add('mile--claimed');
-      sponsorClasses(s).trim().split(' ').filter(Boolean).forEach(c => block.classList.add(c));
       block.setAttribute('aria-label',
         `Mile ${i} — sponsored by ${s.sponsor}, £${s.amount}`);
     } else if (availableTier === 'premium') {
-      block.classList.add('mile--premium-available');
       block.setAttribute('aria-label', `Mile ${i} — start/finish slot available at £${CONFIG.premiumPrice}`);
     } else if (availableTier === 'featured') {
-      block.classList.add('mile--featured-available');
       block.setAttribute('aria-label', `Mile ${i} — premium slot available at £${CONFIG.featuredPrice}`);
     } else {
       block.setAttribute('aria-label', `Mile ${i} — available to sponsor`);
@@ -4515,20 +4518,18 @@ function buildMilesGrid() {
     if (col <= (isMobile ? 3 : 8))        block.classList.add('mile--edge-left');
     else if (col >= (isMobile ? 8 : 12))  block.classList.add('mile--edge-right');
 
-    // Wide hover card (logo + sponsor details + message). Same markup
-    // as the Leaflet pixel tooltip so the two views stay in sync.
+    // Wide hover card (logo + sponsor details + message): the exact
+    // markup the map pixel's tooltip uses.
     const tip = document.createElement('div');
     tip.className = 'mile__tooltip';
-    tip.innerHTML = sponsorCardHTML(i, s, availableTier);
+    tip.innerHTML = m.cardHTML;
     block.appendChild(tip);
 
-    // Tap/click opens a larger preview modal for readability.
-    block.addEventListener('click',
-      () => openMilePreviewModal(i, s, availableTier || 'standard'));
+    block.addEventListener('click', () => openMile(m));
     grid.appendChild(block);
   }
   document.getElementById('statClaimed').textContent = claimed;
-  document.getElementById('statRemaining').textContent = 190 - claimed;
+  document.getElementById('statRemaining').textContent = states.length - claimed;
   updateMilesGridSize();
 }
 
