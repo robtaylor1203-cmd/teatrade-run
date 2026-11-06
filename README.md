@@ -74,6 +74,21 @@ winner pays on GiveWheel  ->  next poll matches the code  ->  card shows "Sponso
 - Winners reply to their email with logo files (vector PDF/SVG/AI or high-res PNG); replies go to
   `contact@teatrade.co.uk`.
 
+### Strava training stats
+
+`/api/strava-stats` reads your Strava activities live (runs and trail runs since **1 November 2022**, set by
+`STRAVA_SINCE` or the default in `functions/api/strava-stats.js`) and the site shows them in the training
+modal. The date under the stats is the real start of the counted window, so it must match the data.
+
+Strava only allows API access while the account that owns the API app has an active **Strava subscription**.
+If it lapses, Strava answers `403 Application / Status / Inactive` and the site backs off for 30 minutes at a
+time, shows the last good numbers, and recovers by itself once the subscription is active again.
+
+**Fallback without the API:** request your data export on strava.com (Settings > My Account > *Download your
+account*), then run `node tools/strava-import.mjs "C:\path\to\export_12345.zip"` to rebuild
+`strava-stats.json` (only `activities.csv` is read and only totals are written), and commit it. The export
+contains private data (notes, GPS, heart rate); it is git-ignored and must never be committed (public repo).
+
 ### Cloudflare Pages settings
 
 KV binding: `SPONSORSHIPS_KV`.

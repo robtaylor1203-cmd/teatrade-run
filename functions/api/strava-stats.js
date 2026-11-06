@@ -25,29 +25,36 @@
  *   STRAVA_CLIENT_SECRET     from your Strava API app
  *   STRAVA_REFRESH_TOKEN     one-time bootstrap (see /tools/strava-auth.html)
  *   STRAVA_ATHLETE_ID        your numeric Strava athlete id (for the profile link)
- *   STRAVA_SINCE             ISO date e.g. "2026-01-01" — only count runs after this
+ *   STRAVA_SINCE             ISO date e.g. "2022-11-01" — only count runs after this
+ *                            (defaults to 2022-11-01; the page label shows this date)
  *   SPONSORSHIPS_KV          re-used to cache token + result (no extra binding needed)
  */
 export async function onRequestGet({ env }) {
+  const BACKOFF_KEY = "strava:backoff";
   try {
-    const since = env.STRAVA_SINCE || "2026-01-01";
+    const since = env.STRAVA_SINCE || "2022-11-01";
     const cacheKey = "strava:cache";
     const cached = await env.SPONSORSHIPS_KV.get(cacheKey, { type: "json" });
     if (cached && Date.now() - cached.cached_ms < 5 * 60 * 1000) {
       return json(cached.payload);
     }
 
+    // Strava recently refused us: don't make every visitor repeat the failing call.
+    if (await env.SPONSORSHIPS_KV.get(BACKOFF_KEY)) throw new Error("strava backing off after a recent refusal");
+
     const access = await getAccessToken(env);
     const sinceEpoch = Math.floor(new Date(since).getTime() / 1000);
 
-    // Page through activities (Strava returns max 200 per page).
+    // Page through activities (Strava returns max 200 per page). Several years
+    // of every activity type can exceed a thousand rows, so allow plenty of pages.
     const all = [];
-    for (let page = 1; page < 10; page++) {
+    for (let page = 1; page <= 25; page++) {
       const r = await fetch(
         `https://www.strava.com/api/v3/athlete/activities?after=${sinceEpoch}&per_page=200&page=${page}`,
         { headers: { authorization: `Bearer ${access}` } },
       );
-      if (!r.ok) break;
+      // Never report "0 runs" when Strava actually refused us (e.g. app inactive).
+      if (!r.ok) throw new Error(`strava activities ${r.status}: ${(await r.text()).slice(0, 200)}`);
       const batch = await r.json();
       if (!Array.isArray(batch) || batch.length === 0) break;
       all.push(...batch);
@@ -77,9 +84,18 @@ export async function onRequestGet({ env }) {
       JSON.stringify({ cached_ms: Date.now(), payload }),
       { expirationTtl: 60 * 10 },
     );
+    // Last good result, kept indefinitely so a Strava outage doesn't blank the page.
+    await env.SPONSORSHIPS_KV.put("strava:last", JSON.stringify(payload));
 
     return json(payload);
   } catch (err) {
+    // A refusal (e.g. subscription lapsed) is retried after 30 minutes, not on every visit.
+    const refused = /\b40[13]\b/.test(String(err));
+    if (!/backing off/.test(String(err))) {
+      await env.SPONSORSHIPS_KV.put(BACKOFF_KEY, "1", { expirationTtl: refused ? 30 * 60 : 300 }).catch(() => {});
+    }
+    const last = await env.SPONSORSHIPS_KV.get("strava:last", { type: "json" }).catch(() => null);
+    if (last) return json({ ...last, stale: true });
     return json({ error: "strava_unavailable", detail: String(err) }, 502);
   }
 }

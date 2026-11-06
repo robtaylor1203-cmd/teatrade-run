@@ -4,3 +4,8 @@
 !.dev.vars.example
 .env*
 !.env.example
+
+# Strava data exports contain private data (notes, GPS, heart rate). Never commit.
+strava-export/
+export_*.zip
+activities.csv

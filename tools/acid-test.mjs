@@ -1,4 +1,4 @@
-﻿// Run: node tools/acid-test.mjs   (no deps, no network, no real payments)
+// Run: node tools/acid-test.mjs   (no deps, no network, no real payments)
 // Runs the real Cloudflare Function modules against a mock KV and a mock
 // GiveWheel API (response shapes copied from production). The functions are
 // copied to a temp folder marked as ESM so the repo needs no package.json.
@@ -19,6 +19,7 @@ const { onRequestGet:  logoGet }     = await load("api/logo/[id].js");
 const { onRequestPost: webhook }     = await load("api/givewheel-webhook.js");
 const { onRequestPost: adminAssign } = await load("api/admin/assign-pixel.js");
 const { milePrice, mileTier }        = await load("_lib/sponsor.js");
+const { onRequestGet: stravaStats } = await load("api/strava-stats.js");
 const { onRequestGet: auctionStatus }                       = await load("api/auction.js");
 const { onRequestPost: auctionBid }                         = await load("api/auction/bid.js");
 const { onRequestGet: confirmGet, onRequestPost: confirmPost } = await load("api/auction/confirm.js");
@@ -66,6 +67,7 @@ function gwPay({ amount, code, name = "Donor", message = "" }) {
 globalThis.fetch = async (url, init = {}) => {
   const u = String(url);
   if (u.startsWith("https://api.resend.com")) return resendMock(u, init);
+  if (u.startsWith("https://www.strava.com")) return stravaMock(u, init);
   gwCalls++;
   const res = (status, body) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
   if (u.includes("/api/fundraisings/url/")) {
@@ -118,6 +120,26 @@ function resendMock(u, init) {
   return res(404, {});
 }
 
+// ---- mock Strava ----------------------------------------------------
+const stravaCalls = [];
+let stravaMode = "ok";   // "ok" | "inactive"
+const stravaActs = [];   // 450 activities: runs, trail runs, rides, walks
+for (let i = 0; i < 450; i++) {
+  const type = ["Run", "TrailRun", "Ride", "Walk", "Run"][i % 5];
+  stravaActs.push({ id: i, sport_type: type, type: type === "TrailRun" ? "Run" : type, distance: 10000, moving_time: 3000, total_elevation_gain: 100 });
+}
+function stravaMock(u, init) {
+  const url = new URL(u);
+  stravaCalls.push(url.pathname + url.search);
+  const res = (status, b) => new Response(JSON.stringify(b), { status });
+  if (url.pathname === "/oauth/token") return res(200, { access_token: "stv_tok", refresh_token: "stv_ref", expires_at: Math.floor(Date.now() / 1000) + 21600 });
+  if (stravaMode === "inactive") return res(403, { message: "Forbidden", errors: [{ resource: "Application", field: "Status", code: "Inactive" }] });
+  if (url.pathname === "/api/v3/athlete/activities") {
+    const page = Number(url.searchParams.get("page") || 1), per = Number(url.searchParams.get("per_page") || 30);
+    return res(200, stravaActs.slice((page - 1) * per, page * per));
+  }
+  return res(404, {});
+}
 // ---- helpers --------------------------------------------------------
 const kv = new KV();
 const env = {
@@ -611,6 +633,70 @@ ok(AE.every(e => /^[\x00-\x7F]*$/.test(e.html) && /^[\x00-\x7F]*$/.test(e.subjec
 ok(AE.every(e => !/outbid|leading|\brank|top spot|in the lead/i.test(e.subject + " " + e.text)), "SEALED: no email ever mentions rank, leading or being outbid");
 ok(![...kv.m.keys()].some(k => k.includes("@")), "no raw email addresses in any storage key");
 Date.now = realNow;
+
+console.log("\n18. Strava stats: four-year window and honest failure");
+const stravaEnv = { ...env, STRAVA_CLIENT_ID: "1", STRAVA_CLIENT_SECRET: "s", STRAVA_REFRESH_TOKEN: "r", STRAVA_ATHLETE_ID: "runteatrade" };
+const callStrava = async (e) => { const r = await stravaStats({ env: e }); return { status: r.status, body: await r.json() }; };
+const runsExpected = stravaActs.filter(a => a.type === "Run" || a.sport_type === "Run" || a.sport_type === "TrailRun");
+
+let sres = await callStrava(stravaEnv);
+const actCalls = stravaCalls.filter(c => c.includes("/athlete/activities"));
+ok(sres.status === 200 && sres.body.since === "2022-11-01", "default window starts 1 November 2022", sres.body.since);
+ok(new URL("https://x" + actCalls[0]).searchParams.get("after") === String(Date.parse("2022-11-01") / 1000), "Strava is asked for activities after 1 Nov 2022 00:00 UTC");
+ok(actCalls.length === 3, "pages through all 450 activities (3 pages of up to 200)", actCalls.length);
+ok(sres.body.run_count === runsExpected.length && sres.body.distance_km === +(runsExpected.length * 10).toFixed(1), "only runs and trail runs are counted (not rides or walks)", sres.body);
+
+await kv.delete("strava:cache");
+sres = await callStrava({ ...stravaEnv, STRAVA_SINCE: "2025-01-01" });
+ok(sres.body.since === "2025-01-01", "the STRAVA_SINCE setting still overrides the default");
+
+await kv.delete("strava:cache"); await kv.delete("strava:last"); await kv.delete("strava:token"); await kv.delete("strava:backoff");
+stravaMode = "inactive";
+sres = await callStrava(stravaEnv);
+ok(sres.status === 502 && sres.body.error === "strava_unavailable" && /403/.test(sres.body.detail) && /Inactive/.test(sres.body.detail), "Strava refusing the app is reported as an error, never as zero runs", sres);
+ok((await kv.get("strava:cache")) === null, "a failure is not cached as data");
+ok(kv.ttl("strava:backoff") === 30 * 60, "a 403 makes the site back off for 30 minutes", kv.ttl("strava:backoff"));
+const callsBefore = stravaCalls.length;
+for (let i = 0; i < 20; i++) sres = await callStrava(stravaEnv);
+ok(stravaCalls.length === callsBefore && sres.status === 502, "20 more visitors cause zero further Strava calls while backing off");
+
+stravaMode = "ok"; await kv.delete("strava:cache"); await kv.delete("strava:backoff");
+sres = await callStrava(stravaEnv);
+ok(sres.status === 200 && sres.body.run_count === runsExpected.length && !sres.body.stale, "after the back-off clears it retries and recovers on its own", sres);
+stravaMode = "inactive"; await kv.delete("strava:cache"); await kv.delete("strava:token"); await kv.delete("strava:backoff");
+sres = await callStrava(stravaEnv);
+ok(sres.status === 200 && sres.body.stale === true && sres.body.run_count === runsExpected.length, "if Strava fails later, the last good numbers are shown instead of blanking", sres.body);
+stravaMode = "ok"; await kv.delete("strava:backoff");
+
+console.log("\n19. Strava export importer (no API needed)");
+const { parseCsv, aggregate, toStats } = await import(new URL("./strava-import.mjs", import.meta.url).href);
+const HEAD = '"Activity ID","Activity Date","Activity Name","Activity Type","Activity Description","Elapsed Time","Distance","Max Heart Rate","Relative Effort","Commute","Activity Private Note","Activity Gear","Filename","Athlete Weight","Bike Weight","Elapsed Time","Moving Time","Distance","Max Speed","Average Speed","Elevation Gain"';
+const rowOf = (id, date, name, type, km, secs, meters, elev, note = "") =>
+  `${id},"${date}","${name}","${type}","",${secs},"${km}",150,50,false,"${note}",,activities/${id}.fit,70,,${secs},${secs - 60},${meters},3.1,2.9,${elev}`;
+const csv = [
+  HEAD,
+  rowOf(1, "Oct 31, 2022, 6:00:00 AM", "before window", "Run", "10.00", 3000, 10000, 50),
+  rowOf(2, "Nov 1, 2022, 7:00:00 AM", "first day", "Run", "5.00", 1500, 5000, 20),
+  rowOf(3, "Mar 14, 2024, 5:30:00 PM", 'He said, ""go""\nsecond line, with comma', "Trail Run", "21.10", 8000, 21100, 400, 'note, with "quotes"\nand newline'),
+  rowOf(4, "6 Jun 2025, 08:00:00", "other date format", "Run", "100.20", 43200, 100200, 1500),
+  rowOf(5, "Jul 2, 2025, 9:00:00 AM", "a ride", "Ride", "50.00", 7200, 50000, 300),
+  rowOf(6, "Jul 3, 2025, 9:00:00 AM", "a walk", "Walk", "3.00", 2400, 3000, 10),
+  rowOf(7, "Nov 4, 2026, 6:45:00 AM", "latest", "Run", "8.00", 2400, 8000, 60),
+].join("\r\n") + "\r\n";
+const parsed = parseCsv(csv);
+ok(parsed.length === 8 && parsed[3][2] === 'He said, "go"\nsecond line, with comma', "CSV parser copes with quotes, commas and newlines inside notes", parsed.length);
+let ag = aggregate(csv, "2022-11-01");
+ok(ag.runs === 4, "counts runs and trail runs on or after the start date only (ignores rides, walks, earlier runs)", ag.runs);
+ok(Math.round(ag.meters) === 5000 + 21100 + 100200 + 8000, "distance uses the metres column, not the display-units column", ag.meters);
+ok(ag.seconds === (1500 - 60) + (8000 - 60) + (43200 - 60) + (2400 - 60) && ag.elevM === 20 + 400 + 1500 + 60, "moving time and elevation gain add up");
+ok(Math.round(ag.longestM) === 100200, "longest run is the 100.2 km one");
+ok(ag.byYear[2022] === 5000 && ag.byYear[2024] === 21100 && ag.byYear[2025] === 100200 && ag.byYear[2026] === 8000, "per-year totals", ag.byYear);
+const stats = toStats(ag, { since: "2022-11-01", athleteUrl: "https://www.strava.com/athletes/runteatrade" });
+ok(stats.distance_km === 134.3 && stats.run_count === 4 && stats.longest_run_km === 100.2 && stats.last_run_date === "2026-11-04" && stats.since === "2022-11-01", "output has exactly the fields the site reads", stats);
+ag = aggregate(csv, "2025-01-01");
+ok(ag.runs === 2, "a later start date narrows the window", ag.runs);
+let threw = null; try { aggregate("Activity ID,Activity Date\n1,x", "2022-11-01"); } catch (e) { threw = e.message; }
+ok(/missing/.test(threw || ""), "a file that isn't a Strava export is rejected with a clear message", threw);
 
 console.log(`\n==== ${pass} passed, ${fail} failed ====`);
 process.exit(fail ? 1 : 0);
