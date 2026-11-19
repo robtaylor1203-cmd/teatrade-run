@@ -1096,7 +1096,9 @@ html {
   align-items: stretch;
   gap: 14px;
   width: 360px;
+  max-width: 100%;
   text-align: left;
+  white-space: normal; /* Leaflet tooltips default to nowrap */
   font-family: 'Roboto', sans-serif;
 }
 .sponsor-card__logo {
@@ -1141,6 +1143,7 @@ html {
   letter-spacing: -0.005em;
   margin-bottom: 4px;
   line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 .sponsor-card__amt {
   font-size: 0.85rem;
@@ -1156,6 +1159,7 @@ html {
   line-height: 1.4;
   border-left: 2px solid var(--hairline);
   padding-left: 10px;
+  overflow-wrap: anywhere;
 }
 .sponsor-card__cta {
   font-size: 0.85rem;
