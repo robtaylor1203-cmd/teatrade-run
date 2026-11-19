@@ -13,7 +13,7 @@ reads GiveWheel's API to confirm payments and lock miles.
 visitor picks a mile  →  sponsor form (name, message, business logo)
         │  POST /api/claim
         ▼
-server prices the mile from its number (£50 / £100 blue every 10th / £250 gold 1 & 190),
+server prices the mile from its number (£20 / £100 blue every 10th / £250 gold 1 & 190),
 holds it 30 min, returns the GiveWheel checkout URL carrying a lock code M{mile}-XXXX
         │
         ▼

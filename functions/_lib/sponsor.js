@@ -4,7 +4,7 @@
  * pricing, tiers, matching and sanitising can never drift apart.
  *
  * Prices/tiers must mirror CONFIG in index.html (premium 1 & 190 = £250,
- * every 10th mile up to 180 = £100, everything else = £50).
+ * every 10th mile up to 180 = £100,  everything else = £20).
  */
 
 export const MILE_COUNT      = 190;
@@ -12,7 +12,7 @@ export const PENDING_TTL_MS  = 30 * 60 * 1000;        // how long a mile stays l
 export const PENDING_KEEP_MS = 48 * 60 * 60 * 1000;   // how long we remember a claim so late payers still get their logo/message
 export const GW_CHECKOUT_BASE = "https://www.givewheel.com/fundraising/16454/run-teatrade/";
 
-const PRICES = { premium: 250, featured: 100, standard: 50 };
+const PRICES = { premium: 250, featured: 100, standard: 20 };
 
 export function mileTier(pixel) {
   if (pixel === 1 || pixel === MILE_COUNT) return "premium";

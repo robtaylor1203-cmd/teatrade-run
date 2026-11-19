@@ -1771,10 +1771,42 @@ html {
   transform: scale(0.96);
   opacity: 0;
   transition: transform .25s cubic-bezier(.2,.8,.2,1), opacity .25s ease;
+  /* Keep tall modals inside the viewport (with the overlay's padding as margin) and scroll internally. */
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
 }
 .sponsor-modal.is-open .sponsor-glass,
 .charity-modal.is-open .charity-glass,
 .strava-modal.is-open .strava-glass { transform: scale(1); opacity: 1; }
+
+/* Slim, rounded scrollbar that floats inside the popup's rounded corners. */
+.sponsor-glass::-webkit-scrollbar,
+.charity-glass::-webkit-scrollbar,
+.strava-glass::-webkit-scrollbar { width: 14px; }
+.sponsor-glass::-webkit-scrollbar-button,
+.charity-glass::-webkit-scrollbar-button,
+.strava-glass::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+.sponsor-glass::-webkit-scrollbar-track,
+.charity-glass::-webkit-scrollbar-track,
+.strava-glass::-webkit-scrollbar-track { background: transparent; margin: 22px 0; }
+.sponsor-glass::-webkit-scrollbar-thumb,
+.charity-glass::-webkit-scrollbar-thumb,
+.strava-glass::-webkit-scrollbar-thumb {
+  background: rgba(120, 124, 132, 0.35);
+  border: 4px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+.sponsor-glass::-webkit-scrollbar-thumb:hover,
+.charity-glass::-webkit-scrollbar-thumb:hover,
+.strava-glass::-webkit-scrollbar-thumb:hover { background-color: rgba(120, 124, 132, 0.6); background-clip: padding-box; }
+.sponsor-glass, .charity-glass, .strava-glass { scrollbar-width: auto; scrollbar-color: auto; }
+@-moz-document url-prefix() {
+  .sponsor-glass, .charity-glass, .strava-glass { scrollbar-width: thin; scrollbar-color: rgba(120, 124, 132, 0.4) transparent; }
+}
 .sponsor-glass__close {
   position: absolute;
   top: 14px; right: 18px;
@@ -2049,8 +2081,6 @@ html {
 /* Compact variant: tighter spacing so the modal fits without scrolling. */
 .sponsor-modal.is-compact .sponsor-glass {
   padding: 22px 26px 20px;
-  max-height: calc(100vh - 40px);
-  overflow-y: auto;
 }
 .sponsor-modal.is-compact .sponsor-glass h3 { margin: 4px 0 6px; font-size: 1.45rem; }
 .sponsor-modal.is-compact .sponsor-glass .lede { font-size: 0.85rem; margin-bottom: 8px; }
@@ -3252,7 +3282,7 @@ html {
         <div class="mile-stats">
           <div class="mile-stat"><div class="num orange" id="statClaimed">0</div><div class="lbl">Claimed</div></div>
           <div class="mile-stat"><div class="num" id="statRemaining">190</div><div class="lbl">Remaining</div></div>
-          <div class="mile-stat"><div class="num">£50</div><div class="lbl">Per mile</div></div>
+          <div class="mile-stat"><div class="num">£20</div><div class="lbl">Per mile</div></div>
           <div class="mile-stat"><div class="num blue">£100</div><div class="lbl">Premium per mile</div></div>
         </div>
         <button class="mile-panel__close" id="milePanelClose" aria-label="Close">×</button>
@@ -3628,7 +3658,7 @@ html {
 <!-- =====================================================
      SPONSOR DETAILS FORM — second step of the modal
      ===================================================== -->
-<div class="sponsor-modal" id="sponsorFormModal" role="dialog" aria-modal="true" aria-labelledby="sponsorFormTitle">
+<div class="sponsor-modal is-compact" id="sponsorFormModal" role="dialog" aria-modal="true" aria-labelledby="sponsorFormTitle">
   <div class="sponsor-glass sponsor-glass--wide">
     <button class="sponsor-glass__close" id="sponsorFormClose" aria-label="Close">×</button>
     <div class="eyebrow" id="sponsorFormEyebrow">Mile 1 of 190</div>
@@ -3691,7 +3721,7 @@ html {
       <div class="sponsor-form__error" id="sponsorFormError" role="alert" hidden></div>
 
       <button type="submit" class="btn btn-primary" id="sponsorFormSubmit">
-        Continue to GiveWheel · <span id="sponsorFormAmount">£50</span>
+        Continue to GiveWheel · <span id="sponsorFormAmount">£20</span>
       </button>
       <div class="small">Donation processed by GiveWheel · 100% to Alzheimer's Research UK + UKTTBS</div>
     </form>
@@ -3954,7 +3984,7 @@ const CONFIG = {
      Tweak granularity here. 190 keeps it aligned to mileage. */
   pixelCount: 190,
   pixelPrice: 10,  // £ per pixel sponsorship
-  milePrice:  50,  // £ standard sponsorship per mile
+  milePrice:  20,  // £ standard sponsorship per mile
   premiumPrice: 250, // £ gold-tier (start & finish) sponsorship
 
   /* Mile numbers offered as the premium GOLD tier — reserved for the
@@ -3963,7 +3993,7 @@ const CONFIG = {
   premiumMiles: [1, 190],
   featuredPrice: 100,
   /* Every 10th mile becomes a featured (blue) premium slot — a step
-     up from a standard £50 mile, but not the gold start/finish. */
+     up from a standard £20 mile, but not the gold start/finish. */
   featuredMiles: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180],
 
   /* When scrolly-mapping, how zoomed-in to be while panning. */
@@ -4774,7 +4804,7 @@ function setupSponsorForm() {
   const submitBtn   = document.getElementById('sponsorFormSubmit');
   const amountEl    = document.getElementById('sponsorFormAmount');
 
-  let ctx = { pixel: 1, tier: 'standard', amount: 50 };
+  let ctx = { pixel: 1, tier: 'standard', amount: 20 };
 
   openSponsorForm = function (next) {
     ctx = next;

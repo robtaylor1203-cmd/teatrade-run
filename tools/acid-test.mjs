@@ -166,31 +166,31 @@ const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJA
 
 // =====================================================================
 console.log("\n1. Pricing is decided by the server");
-ok(milePrice(63) === 50 && mileTier(63) === "standard", "mile 63 = standard Â£50");
+ok(milePrice(63) === 20 && mileTier(63) === "standard", "mile 63 = standard Â£20");
 ok(milePrice(20) === 100 && mileTier(20) === "featured", "mile 20 = featured Â£100");
 ok(milePrice(1) === 250 && milePrice(190) === 250 && mileTier(190) === "premium", "miles 1 & 190 = premium Â£250");
 
 console.log("\n2. Claim validation / abuse");
 let r = await doClaim({ pixel: 63, amount: 1, sponsor_name: "Cheat", donor_type: "individual" });
-ok(r.status === 400 && r.body.error === "bad_amount", "claiming a Â£50 mile for Â£1 is refused", r);
-r = await doClaim({ pixel: 0, amount: 50, sponsor_name: "x" });
+ok(r.status === 400 && r.body.error === "bad_amount", "claiming a Â£20 mile for Â£1 is refused", r);
+r = await doClaim({ pixel: 0, amount: 20, sponsor_name: "x" });
 ok(r.status === 400 && r.body.error === "invalid_pixel", "pixel 0 refused");
-r = await doClaim({ pixel: 191, amount: 50, sponsor_name: "x" });
+r = await doClaim({ pixel: 191, amount: 20, sponsor_name: "x" });
 ok(r.status === 400, "pixel 191 refused");
-r = await doClaim({ pixel: 63, amount: 50, sponsor_name: "   " });
+r = await doClaim({ pixel: 63, amount: 20, sponsor_name: "   " });
 ok(r.status === 400 && r.body.error === "bad_name", "blank name refused");
-r = await doClaim({ pixel: 63, amount: 50, sponsor_name: "Biz", donor_type: "corporate", logo_url: "javascript:alert(1)" });
+r = await doClaim({ pixel: 63, amount: 20, sponsor_name: "Biz", donor_type: "corporate", logo_url: "javascript:alert(1)" });
 ok(r.status === 400 && r.body.error === "bad_logo", "javascript: logo refused");
-r = await doClaim({ pixel: 63, amount: 50, sponsor_name: "Biz", donor_type: "corporate", logo_url: "https://evil.example/x.png" });
+r = await doClaim({ pixel: 63, amount: 20, sponsor_name: "Biz", donor_type: "corporate", logo_url: "https://evil.example/x.png" });
 ok(r.status === 400 && r.body.error === "bad_logo", "remote https logo refused on public claim");
 
 console.log("\n3. Happy path: individual claims mile 63 with an XSS-y name");
 const xss = `<img src=x onerror=alert(1)>Jane`;
-r = await doClaim({ pixel: 63, amount: 50, sponsor_name: xss, message: "Go <b>Rob</b>!", donor_type: "individual", client_token: "tokenAAAA1111" }, "2.2.2.2");
+r = await doClaim({ pixel: 63, amount: 20, sponsor_name: xss, message: "Go <b>Rob</b>!", donor_type: "individual", client_token: "tokenAAAA1111" }, "2.2.2.2");
 ok(r.status === 200 && r.body.GiveWheel_url, "claim accepted", r);
 const url63 = new URL(r.body.GiveWheel_url);
 const code63 = r.body.code;
-ok(url63.searchParams.get("donation") === "50", "GW url uses donation=50", url63.search);
+ok(url63.searchParams.get("donation") === "20", "GW url uses donation=20", url63.search);
 ok(url63.searchParams.get("lock_amount") === "true", "GW url locks the amount");
 ok(/^M63-[A-Z0-9]{4}$/.test(code63), "lock code format M63-XXXX", code63);
 let pub = await doPoll();
@@ -199,24 +199,24 @@ ok(pub.sponsorships.length === 0, "not sponsored until paid");
 ok(!("_diag" in pub) && !("orphan_donations" in pub), "public response has NO diagnostics / donor records");
 
 console.log("\n4. Contention");
-r = await doClaim({ pixel: 63, amount: 50, sponsor_name: "Rival" }, "3.3.3.3");
+r = await doClaim({ pixel: 63, amount: 20, sponsor_name: "Rival" }, "3.3.3.3");
 ok(r.status === 409 && r.body.error === "pending", "another visitor can't take a reserved mile", r);
-r = await doClaim({ pixel: 63, amount: 50, sponsor_name: "Jane retry", client_token: "tokenAAAA1111" }, "2.2.2.2");
+r = await doClaim({ pixel: 63, amount: 20, sponsor_name: "Jane retry", client_token: "tokenAAAA1111" }, "2.2.2.2");
 ok(r.status === 200, "same browser can retry after bouncing back from checkout", r);
 const code63b = r.body.code;
 ok(code63b !== code63, "retry issues a fresh code");
 
 console.log("\n5. Donor pays on GiveWheel -> poll confirms the mile");
-gwPay({ amount: 50, code: code63b, name: "Jane GW", message: "typed on GW" });
+gwPay({ amount: 20, code: code63b, name: "Jane GW", message: "typed on GW" });
 pub = await doPoll();
 let s = pub.sponsorships.find(x => x.pixel === 63);
 ok(!!s, "mile 63 is now sponsored", pub.sponsorships);
 ok(s && s.sponsor === "Jane retry", "name comes from our claim");
-ok(pub.raised_total === 50, "raised_total from GiveWheel = 50", pub.raised_total);
+ok(pub.raised_total === 20, "raised_total from GiveWheel = 20", pub.raised_total);
 ok(!pub.pending_pixels.includes(63), "reservation cleared");
 ok(s && s.logoBg === "#f56600" && s.donor_type === "individual", "individual standard = orange");
 // old code arriving later must not double-book
-gwPay({ amount: 50, code: code63 });
+gwPay({ amount: 20, code: code63 });
 pub = await doPoll(true);
 ok(pub.sponsorships.filter(x => x.pixel === 63).length === 1, "no duplicate sponsorship rows for mile 63");
 ok(pub.orphan_donations.some(o => o.reason === "pixel_taken"), "second payment for a taken mile is flagged for admin, money still counted", pub.orphan_donations);
@@ -242,15 +242,15 @@ const lr404 = await logoGet({ params: { id: "../../etc/passwd" }, env });
 ok(lr404.status === 404, "logo endpoint rejects path tricks");
 
 console.log("\n7. Underpayment / tampering on GiveWheel");
-r = await doClaim({ pixel: 72, amount: 50, sponsor_name: "Skinflint" }, "5.5.5.5");
+r = await doClaim({ pixel: 72, amount: 20, sponsor_name: "Skinflint" }, "5.5.5.5");
 ok(r.status === 200 && !!r.body.code, "claim for mile 72 issued a code", r);
 gwPay({ amount: 1, code: r.body.code, name: "Skinflint" });
 pub = await doPoll(true);
-ok(!pub.sponsorships.some(x => x.pixel === 72), "Â£1 payment against a Â£50 mile does NOT lock the mile");
+ok(!pub.sponsorships.some(x => x.pixel === 72), "Â£1 payment against a Â£20 mile does NOT lock the mile");
 ok(pub.orphan_donations.some(o => o.code === r.body.code), "â€¦and is flagged for admin", pub.orphan_donations);
 
 console.log("\n8. Late payer (lock expired, mile still free) keeps their logo + message");
-r = await doClaim({ pixel: 71, amount: 50, sponsor_name: "Slowcoach & Co", donor_type: "corporate", message: "Sorry I'm late", logo_url: PNG }, "6.6.6.6");
+r = await doClaim({ pixel: 71, amount: 20, sponsor_name: "Slowcoach & Co", donor_type: "corporate", message: "Sorry I'm late", logo_url: PNG }, "6.6.6.6");
 const code71 = r.body.code;
 dd = JSON.parse(await kv.get("data"));
 const row = dd.pending.find(p => p.code === code71);
@@ -258,7 +258,7 @@ row.created_ms -= 40 * 60e3; row.expiresAt = Date.now() - 10 * 60e3;
 await kv.put("data", JSON.stringify(dd));
 pub = await doPoll();
 ok(!pub.pending_pixels.includes(71), "expired lock frees the mile for others");
-gwPay({ amount: 50, code: code71, name: "x" });
+gwPay({ amount: 20, code: code71, name: "x" });
 pub = await doPoll();
 s = pub.sponsorships.find(x => x.pixel === 71);
 ok(s && s.sponsor === "Slowcoach & Co" && s.message === "Sorry I'm late" && s.logo === `/api/logo/${code71}`, "late payment still confirmed with logo + message", s);
@@ -276,7 +276,7 @@ dr = await donate(makeCtx(post("/api/donate", { amount: 0, donor_type: "individu
 ok(dr.status === 400, "zero donation refused");
 
 console.log("\n10. Direct GiveWheel donation (no code) -> orphan -> admin assigns");
-const gid = gwPay({ amount: 50, name: "Walk-in", message: "found you on LinkedIn" });
+const gid = gwPay({ amount: 20, name: "Walk-in", message: "found you on LinkedIn" });
 pub = await doPoll(true);
 ok(pub.orphan_donations.some(o => o.gw_id === String(gid)), "unmatched donation held as orphan");
 let ar = await adminAssign(makeCtx(post("/api/admin/assign-pixel", { secret: "wrong", pixel: 80, gw_id: String(gid) })));
@@ -295,7 +295,7 @@ await doPoll(); await doPoll();
 ok(JSON.stringify((await doPoll()).sponsorships) === before, "repeated polls don't change or duplicate anything");
 
 console.log("\n12. Webhook");
-const whBody = JSON.stringify({ donation: { id: 999001, amount: 50, name: "Hook", supporter_questions: [{ response: "M121-ZZZZ" }] } });
+const whBody = JSON.stringify({ donation: { id: 999001, amount: 20, name: "Hook", supporter_questions: [{ response: "M121-ZZZZ" }] } });
 let wr = await webhook(makeCtx(new Request("https://x/api/givewheel-webhook", { method: "POST", body: whBody })));
 ok(wr.status === 401, "unsigned webhook rejected");
 const noSecretEnv = { ...env, GIVEWHEEL_WEBHOOK_SECRET: undefined };
@@ -333,13 +333,13 @@ const subs    = () => resendCalls.filter(c => c.path === "/contacts" || /\/topic
 const reset   = () => { resendCalls.length = 0; };
 const payFor  = async (claimRes, amount, name) => { gwPay({ amount, code: claimRes.body.code, name }); await doPoll(); await flush(); };
 
-r = await doClaim({ pixel: 41, amount: 50, sponsor_name: "Bad", contact_email: "not-an-email" }, "10.0.0.1");
+r = await doClaim({ pixel: 41, amount: 20, sponsor_name: "Bad", contact_email: "not-an-email" }, "10.0.0.1");
 ok(r.status === 400 && r.body.error === "bad_email", "invalid email rejected on claim", r);
 dr = await donate(makeCtx(post("/api/donate", { amount: 5, donor_type: "individual", sponsor_name: "x", contact_email: "a@b" })));
 ok(dr.status === 400, "invalid email rejected on donate");
 
 reset();
-r = await doClaim({ pixel: 41, amount: 50, sponsor_name: "<b>Anna</b>", message: "Run <i>fast</i>", contact_email: "Anna@Example.com ", updates_opt_in: true }, "10.0.0.2");
+r = await doClaim({ pixel: 41, amount: 20, sponsor_name: "<b>Anna</b>", message: "Run <i>fast</i>", contact_email: "Anna@Example.com ", updates_opt_in: true }, "10.0.0.2");
 ok(r.status === 200, "claim with email + opt-in accepted", r);
 await flush();
 ok(emails().length === 0, "no email before payment");
@@ -367,30 +367,30 @@ await doPoll(); await doPoll(); await flush();
 ok(emails().length === 1, "re-polling never re-sends");
 
 reset();
-r = await doClaim({ pixel: 42, amount: 50, sponsor_name: "Ben", contact_email: "ben@example.com" }, "10.0.0.3");
+r = await doClaim({ pixel: 42, amount: 20, sponsor_name: "Ben", contact_email: "ben@example.com" }, "10.0.0.3");
 await payFor(r, 50, "Ben");
 ok(emails().length === 1 && subs().length === 0, "no opt-in tick => confirmation only, NOT added to any list", { e: emails().length, s: subs().length });
 
 reset();
-r = await doClaim({ pixel: 43, amount: 50, sponsor_name: "Cara" }, "10.0.0.4");
+r = await doClaim({ pixel: 43, amount: 20, sponsor_name: "Cara" }, "10.0.0.4");
 await payFor(r, 50, "Cara");
 ok(emails().length === 0 && subs().length === 0, "no email given => nothing sent");
 ok(!!(await doPoll()).sponsorships.find(x => x.pixel === 43), "…and the mile still confirms");
 
 reset(); resendMode = "down";
-r = await doClaim({ pixel: 44, amount: 50, sponsor_name: "Dan", contact_email: "dan@example.com", updates_opt_in: true }, "10.0.0.5");
+r = await doClaim({ pixel: 44, amount: 20, sponsor_name: "Dan", contact_email: "dan@example.com", updates_opt_in: true }, "10.0.0.5");
 await payFor(r, 50, "Dan");
 ok(!!(await doPoll()).sponsorships.find(x => x.pixel === 44), "Resend outage does not block the mile confirming");
 resendMode = "ok";
 
 reset(); existingContacts.add("eve@example.com");
-r = await doClaim({ pixel: 45, amount: 50, sponsor_name: "Eve", contact_email: "eve@example.com", updates_opt_in: true }, "10.0.0.6");
+r = await doClaim({ pixel: 45, amount: 20, sponsor_name: "Eve", contact_email: "eve@example.com", updates_opt_in: true }, "10.0.0.6");
 await payFor(r, 50, "Eve");
 ok(subs().some(c => /\/contacts\/eve%40example\.com\/topics$/.test(c.path) && c.method === "PATCH"), "existing contact (e.g. on main list) gets topic opt-in via PATCH, not a new global subscription", subs().map(c => c.method + " " + c.path));
 ok(!resendCalls.some(c => c.path === "/contacts" && c.method === "POST"), "existing contact is never re-created or overwritten");
 
 reset(); const savedKey = env.RESEND_API_KEY; delete env.RESEND_API_KEY;
-r = await doClaim({ pixel: 46, amount: 50, sponsor_name: "Finn", contact_email: "finn@example.com", updates_opt_in: true }, "10.0.0.7");
+r = await doClaim({ pixel: 46, amount: 20, sponsor_name: "Finn", contact_email: "finn@example.com", updates_opt_in: true }, "10.0.0.7");
 await payFor(r, 50, "Finn");
 ok(resendCalls.length === 0 && !!(await doPoll()).sponsorships.find(x => x.pixel === 46), "no RESEND_API_KEY => feature off, flow unaffected");
 env.RESEND_API_KEY = savedKey;
@@ -403,9 +403,9 @@ await doPoll(); await flush();
 ok(emails().length === 1 && /Thank you/.test(emails()[0].body.subject) && !/Mile/.test(emails()[0].body.subject), "general donation gets a thank-you (no mile wording)", emails().map(e => e.body.subject));
 
 reset();
-r = await doClaim({ pixel: 47, amount: 50, sponsor_name: "Hal", contact_email: "hal@example.com" }, "10.0.0.8");
-const hid = gwPay({ amount: 50, code: r.body.code, name: "Hal" });
-const whB = JSON.stringify({ donation: { id: hid, amount: 50, name: "Hal", supporter_questions: [{ response: r.body.code }] } });
+r = await doClaim({ pixel: 47, amount: 20, sponsor_name: "Hal", contact_email: "hal@example.com" }, "10.0.0.8");
+const hid = gwPay({ amount: 20, code: r.body.code, name: "Hal" });
+const whB = JSON.stringify({ donation: { id: hid, amount: 20, name: "Hal", supporter_questions: [{ response: r.body.code }] } });
 const key2 = await crypto.subtle.importKey("raw", new TextEncoder().encode("whsec"), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
 const sig2 = Buffer.from(await crypto.subtle.sign("HMAC", key2, new TextEncoder().encode(whB))).toString("hex");
 wr = await webhook(makeCtx(new Request("https://x/w", { method: "POST", body: whB, headers: { "x-givewheel-signature": sig2 } })));
@@ -425,15 +425,15 @@ ok(allEmails.some(e => e.html.includes("&#163;50")) && allEmails.some(e => e.tex
 ok(allEmails.every(e => !/<img|<script|onerror/i.test(e.html)), "no injected markup in any email");
 
 reset(); resendMode = "ratelimit_once"; rateLimited = false;
-r = await doClaim({ pixel: 48, amount: 50, sponsor_name: "Iris", contact_email: "iris@example.com" }, "10.0.1.1");
+r = await doClaim({ pixel: 48, amount: 20, sponsor_name: "Iris", contact_email: "iris@example.com" }, "10.0.1.1");
 await payFor(r, 50, "Iris");
 resendMode = "ok";
 ok(emails().length === 2 && sentKeys.has(`confirm-${gwId}`), "a 429 from the shared rate limit is retried once, then succeeds", emails().length);
 
 reset();
-const ra = await doClaim({ pixel: 49, amount: 50, sponsor_name: "Ann", contact_email: "a1@example.com", updates_opt_in: true }, "10.0.1.2");
-const rb = await doClaim({ pixel: 51, amount: 50, sponsor_name: "Bea", contact_email: "b2@example.com", updates_opt_in: true }, "10.0.1.3");
-gwPay({ amount: 50, code: ra.body.code, name: "Ann" }); gwPay({ amount: 50, code: rb.body.code, name: "Bea" });
+const ra = await doClaim({ pixel: 49, amount: 20, sponsor_name: "Ann", contact_email: "a1@example.com", updates_opt_in: true }, "10.0.1.2");
+const rb = await doClaim({ pixel: 51, amount: 20, sponsor_name: "Bea", contact_email: "b2@example.com", updates_opt_in: true }, "10.0.1.3");
+gwPay({ amount: 20, code: ra.body.code, name: "Ann" }); gwPay({ amount: 20, code: rb.body.code, name: "Bea" });
 await doPoll(); await flush();
 const who = resendCalls.map(c => c.body?.to?.[0] || c.body?.email || decodeURIComponent((c.path.match(/contacts\/([^/]+)/) || [])[1] || ""));
 ok(who.includes("a1@example.com") && who.includes("b2@example.com") && who.lastIndexOf("a1@example.com") < who.indexOf("b2@example.com"), "burst of donations is handled one donor at a time (never a flood of parallel API calls)", who);
